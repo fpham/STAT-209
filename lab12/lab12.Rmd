@@ -1,0 +1,166 @@
+---
+title: "lab12"
+author: "Felix Pham"
+date: "14/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(dbplyr)  
+library(mdsr)    ## Package for our book
+library(RMySQL)  ## Standard R/SQL interface package
+
+db <- dbConnect_scidb("airlines")
+
+dbListTables(db)
+
+flights <- tbl(db, "flights")
+
+carriers <- tbl(db, "carriers")
+
+
+# flights %>%
+#   filter(year == 2012 & month == 6 & day == 29 & carrier == 'UA') %>%
+#   select(flight, origin, dest) %>%
+#   head(10)
+
+
+## END OF R CODE CHUNK FOR THIS LAB!
+
+```
+
+```{sql connection=db}
+
+SHOW TABLES; -- dbListTables() to list the tables in a database using R code; 
+             -- the SQL equivalent of this is SHOW TABLES
+
+```
+
+```{sql connection=db}
+
+DESCRIBE flights; -- To see what variables (“fields” in database lingo) are in a particular table, we can use DESCRIBE (similar to glimpse() in R).
+
+```
+
+```{sql connection=db}
+SELECT year,month,day,carrier,flight,origin,dest FROM flights -- flights is referring to 
+                                                              -- the table in the database, 
+                                                              -- not the one savedin R code!
+    LIMIT 0,10 -- finish the query with a semicolon
+    
+    -- To view the first few rows of the flights data without creating a tbl view first, we can use a SELECT * FROM <table> LIMIT 0,<n> construction (where n is the number of rows we want to view)
+
+-- CAUTION: NEVER to run a command like the above without the LIMIT component unless you know for sure that the table you’re accessing is relatively small. Omitting this will cause your computer to try to retrieve and print the ENTIRETY of the database, which in this case is over 100 million records. This will likely CRASH your computer and also slow the server way down for everyone else.
+    
+
+```
+
+```{sql connection=db}
+
+SELECT year,month,day,carrier,flight,origin,dest 
+  FROM flights -- flights is referring to the table in the database, 
+               -- not  the one savedin R code!
+  WHERE year=2013 AND -- similar to filter() in R!
+        month=6 AND 
+        day=29 AND 
+        carrier='UA'
+  LIMIT 0,10; -- (note the -- for comments; similar to the # in R!)
+
+
+```
+
+
+```{sql connection=db}
+
+SELECT flight, origin, dest FROM flights
+  WHERE year    = 2012 -- can continue queries on the next line
+    AND month   = 6    -- indentation is just to facilitate readability
+    AND day     = 29    
+    AND carrier = 'UA'
+  LIMIT 0,10; -- finish the query with a semicolon
+
+
+```
+
+```{sql connection=db}
+
+SELECT carrier, flight FROM flights
+  WHERE year  = 2012
+    AND month = 6
+    AND day BETWEEN 25 AND 30
+  LIMIT 0,10;
+
+
+```
+
+```{sql connection=db}
+
+SELECT 
+    str_to_date(concat(year, '-', month, '-', day), '%Y-%m-%d') as date,
+    origin,dest,flight,carrier
+  FROM flights
+  WHERE carrier='UA' AND year=2012
+  HAVING date BETWEEN '2012-06-16' AND '2012-07-14'
+  LIMIT 0,10
+
+
+```
+
+```{sql connection=db}
+
+SELECT 
+  str_to_date(concat(year, '-', month, '-', day), '%Y-%m-%d') as date,
+  origin,dest,flight,carrier
+FROM flights
+WHERE carrier='UA' AND year=2012 AND dest='JFK'
+HAVING date BETWEEN '2012-06-16' AND '2012-07-14'
+ORDER BY date asc, flight asc
+LIMIT 0,100;
+
+
+```
+
+```{sql connection=db}
+
+SELECT 
+  avg(dep_delay) AS avg_delay -- Note that we don’t need a LIMIT here, since we’re aggregating the dataset to a single number.
+FROM flights
+WHERE year  = 2012 
+  AND month = 6 
+  AND day   = 29;
+
+
+```
+
+```{sql connection=db}
+
+SELECT 
+  sum(1)         AS N1,
+  count(*)       AS N2,  -- redundant; just to illustrate
+  avg(dep_delay) AS avg_delay
+FROM flights
+WHERE year  = 2012 
+  AND month = 6 
+  AND day   = 29;
+
+
+```
+
+```{sql connection=db}
+
+SELECT 
+  carrier,
+  count(*)       AS num_flights,
+  avg(dep_delay) as avg_delay
+FROM flights
+WHERE year  = 2012 
+  AND month = 6 
+  AND day   = 29
+GROUP BY carrier
+ORDER BY avg_delay ASC;
+
+```

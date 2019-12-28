@@ -1,0 +1,295 @@
+---
+title: "sqlDemo"
+author: "Felix Pham"
+date: "18/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+### Set up the connection
+library(dbplyr)
+library(mdsr)
+library(RMySQL)
+
+db <- dbConnect_scidb(dbname = "airlines")
+
+dbListTables(db) # See what tables there are in the database
+
+## Make R objects for connections to specific tables
+## (doesn't actually import the data itself)
+flights <- tbl(db, "flights") 
+carriers <- tbl(db, "carriers")
+
+### Do some wrangling
+
+query <- flights %>%
+  filter(year == 1996 & month == 9) %>%
+  filter(dest == "JFK") %>%
+  inner_join(carriers, by = c("carrier" = "carrier")) %>%
+  group_by(name) %>%
+  summarize(
+    N = n(),
+    pct_ontime = sum(arr_delay <= 15) / n()) %>%
+  filter(N >= 100) %>%
+  arrange(desc(pct_ontime))
+
+## This is actually an SQL query
+head(query)
+
+## Pretty unintelligible
+show_query(query)
+
+## An equivalent query written by hand
+"
+SELECT 
+  c.name,
+  sum(1) as N,
+  sum(arr_delay <= 15) / sum(1) as pct_ontime 
+FROM flights f 
+JOIN carriers c ON f.carrier = c.carrier 
+WHERE 
+    year = 1996 AND 
+    month = 9 AND 
+    dest = 'JFK' 
+GROUP BY name 
+HAVING N >= 100 
+ORDER BY pct_ontime desc 
+LIMIT 0,4;
+"
+
+### We can (in some cases) use auto-translation
+### from R to SQL
+
+translate_sql(mean(arr_delay))
+
+### actually, SQL does this
+
+translate_sql(mean(arr_delay, na.rm = TRUE))
+
+### But not all R expressions have SQL equivalents
+
+paste0("this", "is", "a", "string")
+
+### Returns something...
+translate_sql(paste0("this", "is", "a", "string"))
+## but it's not actually valid SQL
+
+### This used to produce an error, but since some very recent
+### updates to the R/SQL interface, it works now
+
+carriers %>% 
+  mutate(name_code = paste0(name, "(", carrier, ")"))
+
+### However, there will be some cases when dplyr expressions
+### that are valid for data frames don't work with SQL connections
+
+### if the data isn't too big, we can convert the whole thing 
+### with collect()
+
+carriers %>% 
+  collect() %>% 
+  mutate(name_code = paste0(name, "(", carrier, ")"))
+
+### `carriers` as a connection is pretty small
+carriers %>% 
+  object.size() %>% 
+  print(units = "Kb")
+
+### But converted to a 'flat' data frame it's over 60x bigger
+carriers %>% 
+  collect() %>% 
+  object.size() %>% 
+  print(units = "Kb")
+
+### Imagine we had a dataset with a million cases and 100 variables
+n <- 100 * 1000000 
+x <- runif(n) %>% matrix(ncol = 100) %>% as.data.frame()
+head(x)
+x %>% object.size() %>% print(units = "Mb")
+### Still fits in memory, but 10M?  100M?
+rm(x) # Don't want to take up that much space
+
+### Instead, of converting to data frames, 
+### we can pass SQL expressions through dplyr
+carriers %>% 
+  mutate(name_code = CONCAT(name, "(", carrier, ")"))
+
+# ### (note that CONCAT is _not_ a valid R function
+# CONCAT(name, "(", carrier, ")")  # Error
+
+
+
+##### Going (almost) all the way to "raw" SQL
+
+### Connecting to an SQL database
+library(mdsr)
+library(RMySQL)
+## scidb is a database at Smith College with movie data.
+## The mdsr package goes with our textbook and provides
+## a simple way to interface to it
+db <- dbConnect_scidb(dbname = "imdb")
+dbListTables(db)
+
+### Passing 'raw' SQL queries through R
+
+## Getting the kinds of 'entities' in the database
+kind_types <- db %>%
+  dbGetQuery(
+    "SELECT * FROM kind_type;"
+    )
+
+head(kind_types)
+
+## Getting the kinds of 'properties' in the database
+info_types <- db %>%
+  dbGetQuery(
+    "SELECT * FROM info_type"
+    )
+
+head(info_types)
+
+## Equivalent to a filter()
+## (Note: `title` is the name of both a table and
+##  a variable in that table, annoyingly)
+## (Note 2: since the whole query is quoted with double quotes, need
+## single quotes for quoted expressions within the query)
+db %>%
+  dbGetQuery(
+    "SELECT *
+     FROM title
+     WHERE title = 'The Empire Strikes Back';"
+    )
+
+## A 'conjunction' filter
+db %>%
+  dbGetQuery(
+    "SELECT *
+     FROM title
+     WHERE title = 'The Empire Strikes Back' 
+         AND kind_id = 1;"
+    )
+
+## Oops, nothing matches. Any idea why?
+
+## We can use "wildcards" to search for titles containing a phrase
+db %>%
+  dbGetQuery(
+      "SELECT *
+       FROM title
+       WHERE title LIKE '%The Empire Strikes Back%'
+         AND kind_id = 1;"
+      )
+
+## Equivalent to a `select()` and `arrange()`
+sql <- "
+SELECT t.title, t.production_year
+FROM title t 
+WHERE t.title LIKE '%The Empire Strikes Back%'
+  AND t.kind_id = 1
+ORDER BY production_year;
+"
+
+## Now run the query
+db %>%
+  dbGetQuery(sql)
+
+## A join, select and filter
+db %>%
+  dbGetQuery(
+      "SELECT n.name, ci.role_id
+       FROM cast_info ci
+       JOIN name n ON n.id = ci.person_id
+       WHERE movie_id = 4260164;"
+      )
+
+
+
+```
+
+SELECT * FROM flights LIMIT 0,10
+
+SELECT year,month,day,carrier,flight,origin,dest FROM flights
+    LIMIT 0,10;
+    
+    
+SELECT year,month,day,carrier,flight,origin,dest 
+  FROM flights
+  WHERE year=2013 AND 
+        month=6 AND 
+        day=29 AND 
+        carrier='UA'
+  LIMIT 0,10; -- (note the -- for comments; similar to the # in R!)
+  
+  
+SELECT flight, origin, dest FROM flights
+  WHERE year    = 2012 -- can continue queries on the next line
+    AND month   = 6    -- indentation is just to facilitate readability
+    AND day     = 29    
+    AND carrier = 'UA'
+  LIMIT 0,10; -- finish the query with a semicolon
+  
+SELECT carrier, flight FROM flights
+  WHERE year  = 2012
+    AND month = 6
+    AND day BETWEEN 25 AND 30
+  LIMIT 0,10;
+    
+    
+SELECT month,day,carrier,flight FROM flights
+  WHERE year=2012
+    AND (month=6 AND day BETWEEN 15 AND 30) --note the parens for grouping
+     OR (month=7 AND day BETWEEN 1 and 14)
+  LIMIT 0,10;
+  
+SELECT 
+    str_to_date(concat(year, '-', month, '-', day), '%Y-%m-%d') as date,
+    origin,dest,flight,carrier
+  FROM flights
+  WHERE carrier='UA' AND year=2012
+  HAVING date BETWEEN '2012-06-16' AND '2012-07-14'
+  LIMIT 0,10
+  
+SELECT 
+  str_to_date(concat(year, '-', month, '-', day), '%Y-%m-%d') as date,
+  origin,dest,flight,carrier
+FROM flights
+WHERE carrier='UA' AND year=2012 AND dest='JFK'
+HAVING date BETWEEN '2012-06-16' AND '2012-07-14'
+ORDER BY date asc, flight asc
+LIMIT 0,100;
+
+SELECT 
+  avg(dep_delay) AS avg_delay -- Note that we don’t need a LIMIT here, since we’re aggregating the dataset to a single number.
+FROM flights
+WHERE year  = 2012 
+  AND month = 6 
+  AND day   = 29;
+  
+
+SELECT 
+  sum(1)         AS N1,
+  count(*)       AS N2,  -- redundant; just to illustrate
+  avg(dep_delay) AS avg_delay
+FROM flights
+WHERE year  = 2012 
+  AND month = 6 
+  AND day   = 29;
+  
+SELECT 
+  carrier,
+  count(*)       AS num_flights,
+  avg(dep_delay) as avg_delay
+FROM flights
+WHERE year  = 2012 
+  AND month = 6 
+  AND day   = 29
+GROUP BY carrier
+ORDER BY avg_delay ASC;
+
+
+

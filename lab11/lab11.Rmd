@@ -1,0 +1,293 @@
+---
+title: "lab11"
+author: "Felix Pham"
+date: "6/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r, message=FALSE}
+
+library(tidyverse)
+library(rvest)
+## Note: the trailing slash is required
+url <- "http://www.boxofficemojo.com/alltime/weekends/"
+raw_html <- read_html(url)
+raw_html
+
+tables <- raw_html %>%
+  html_nodes("table")
+tables
+
+
+library(magrittr) # Not loaded by tidyverse for some reason
+## Equivalent to box_office_table <- tables[[1]]
+box_office_table <- tables %>% extract2(1)
+box_office_table
+
+
+## header = TRUE preserves the column headings
+box_office_data <- box_office_table %>% html_table(header = TRUE)
+head(box_office_data)
+
+
+url <- "http://en.wikipedia.org/wiki/List_of_songs_recorded_by_the_Beatles"
+beatles_tables <- url  %>%
+  read_html()  %>%
+  html_nodes(css = "table")
+
+
+list_of_dfs <- 
+  lapply(
+    beatles_tables, 
+    html_table, 
+    header = TRUE, 
+    fill = TRUE)
+lapply(list_of_dfs, dim)
+
+
+names(box_office_data)
+
+box_office_data <- box_office_data %>%
+  rename(
+    rank           = `Rank`,
+    title          = `Release`,
+    distributor    = `Distributor`,
+    opening        = `Opening`,
+    pct_of_total   = `% of Total`,
+    theaters       = `Theaters`,
+    average_gross  = `Average`,
+    total_gross    = `Total Gross`,
+    date           = `Date`
+  )
+head(box_office_data)
+
+box_office_data %>%
+  ggplot(aes(x = date, y = total_gross)) +
+  geom_point(aes(size = opening, color = opening)) +
+  xlab("Opening Date") +
+  ylab("Opening Day Gross")
+
+
+box_office_data <- box_office_data %>%
+  mutate(
+    opening = parse_number(opening),
+    theaters = parse_number(theaters),
+    average_gross = parse_number(average_gross),
+    total_gross = parse_number(total_gross))
+
+glimpse(box_office_data)
+
+library(lubridate)
+box_office_data <- box_office_data %>%
+  mutate(
+    date = mdy(date)
+  )
+glimpse(box_office_data)
+
+names(box_office_data)
+
+
+library(scales)
+box_office_data %>%
+  ggplot(aes(x = date, y = total_gross)) +
+  geom_point(aes(color = opening, size = opening)) +
+  guides(
+    color = guide_legend("Opening Weekend Receipts"),
+    size = guide_legend("Opening Weekend Receipts")) +
+  xlab("Opening Date") +
+  scale_y_continuous(
+    "Total Box Office Gross",
+    labels = dollar) +
+  scale_color_continuous(labels = dollar) +
+  scale_size_continuous(labels = dollar)
+
+
+urlcpi<- "https://inflationdata.com/Inflation/Consumer_Price_Index/HistoricalCPI.aspx"
+r_html <- read_html(urlcpi)
+r_html
+
+cpi <- r_html %>%
+  html_nodes("table")
+cpi
+
+cpi_table <- cpi %>% extract2(1)
+cpi_table
+
+cpi_data <- cpi_table %>% html_table(header = TRUE)
+
+cpi_data <- cpi_data %>% mutate(Yeardbl = as.double(cpi_data$Year)) %>% select(Yeardbl, Jan)
+
+head(cpi_data)
+
+
+
+names(cpi_data)
+
+glimpse(cpi_data)
+
+yearss <- year(as.Date(box_office_data$date, format = "%Y-%m-%d"))
+
+box_office_data_new <- box_office_data %>% mutate (Year = yearss)
+
+names(box_office_data_new)
+
+box_office_data_new <- box_office_data_new %>% left_join(cpi_data, by = c("Year" = "Yeardbl")) %>%
+  mutate(rate_cpi = 251.712 / Jan) %>%
+  mutate(total_new_gross = total_gross * rate_cpi)
+
+
+glimpse(box_office_data_new)
+
+names(box_office_data_new)
+
+box_office_data_new %>%
+  ggplot(aes(x = date, y = total_new_gross)) +
+  geom_point(aes(color = opening, size = opening)) +
+  guides(
+    color = guide_legend("Opening Weekend Receipts"),
+    size = guide_legend("Opening Weekend Receipts")) +
+  xlab("Opening Date") +
+  scale_y_continuous(
+    "Total Box Office Gross (Adjusted for inflation)",
+    labels = dollar) +
+  scale_color_continuous(labels = dollar) +
+  scale_size_continuous(labels = dollar)
+```
+```{r}
+
+urmovie <- "https://www.the-numbers.com/box-office-records/domestic/all-movies/weekend/opening"
+ori_html <- read_html(urmovie)
+ori_html
+
+moviebox <- ori_html %>%
+  html_nodes("table")
+moviebox
+
+
+movie_table <- moviebox %>% extract2(2)
+movie_table
+
+movie_data <- movie_table %>% html_table(header = TRUE)
+
+head(movie_data)
+
+names(movie_data)
+
+glimpse(movie_data)
+
+movie_data <- movie_data %>%
+  mutate(
+    Theaters = parse_number(Theaters),
+    Gross = parse_number(Gross),
+    TotalGross = parse_number(TotalGross))
+
+movie_data <- movie_data %>%
+  mutate(
+    date = mdy(Date)
+  )
+
+head(movie_data)
+
+ yearsss <- year(as.Date(movie_data$date, format = "%Y-%m-%d"))
+
+ movie_data_new <- movie_data %>% mutate (Year = yearsss)
+
+ names(movie_data_new)
+ 
+ head(movie_data_new)
+
+ movie_data_new <- movie_data_new %>% left_join(cpi_data, by = c("Year" = "Yeardbl")) %>%
+   mutate(rate_cpi = 251.712 / Jan) %>%
+   mutate(total_new_gross2 = TotalGross * rate_cpi)
+
+
+ glimpse(movie_data_new)
+
+ names(movie_data_new)
+
+ movie_data_new %>%
+   ggplot(aes(x = Rank, y = total_new_gross2)) +
+   geom_point(size = 0.5) +
+   geom_smooth() +
+   ggtitle("Top 100 Opening Weekend at the Domestic Box Office") +
+   guides(
+     color = guide_legend("Gross")) +
+   xlab("Rank") +
+   scale_x_continuous(breaks = seq(0, 100, by = 10)) +
+   scale_y_continuous(
+     "Total Box Office Gross (adjusted for inflations)",
+     labels = dollar) +
+   scale_color_continuous(labels = dollar)
+```
+```{r}
+library(tidyverse)
+
+url <- "http://en.wikipedia.org/wiki/List_of_songs_recorded_by_the_Beatles"
+beatles_tables <- url  %>%
+  read_html()  %>%
+  html_nodes(css = "table")
+beatles_songs <- 
+  beatles_tables %>% 
+  extract2(3) %>% 
+  html_table()
+
+beatles_songs
+
+beatles_songs <- beatles_songs  %>%
+  mutate(
+    Song = gsub('\\"', "", Song)) %>%
+  rename(
+    Songwriters = `Songwriter(s)`,
+    LeadVocals = `Lead vocal(s)[b]`)
+
+head(beatles_songs)
+
+beatles_songs %>%
+  filter(grepl("McCartney", Songwriters)) %>%
+  group_by(Songwriters) %>%
+  summarize(num_songs = n())
+
+
+beatles_songs %>%
+  filter(grepl("(Lennon|McCartney|Harrison|Starkey)", Songwriters)) %>%
+  group_by(Songwriters) %>%
+  summarize(num_songs = n())
+
+beatles_songs <- beatles_songs %>%
+  mutate(
+    Songwriters = gsub("George Harrison", "Harrison", Songwriters))
+
+head(beatles_songs)
+
+contain_pro <- beatles_songs %>%
+  mutate(
+    contain_pronouns = grepl("(I | I\\'|You|Me|My|Your|He|She)", Song)),
+    contain_love = grepl(("Love"),Song) %>%
+  group_by(Song, contain_pronouns) %>% 
+  summarize(num_songs = n())
+head(contain_pro)
+
+contain_love <- contain_pro %>%
+  mutate(
+    contain_love = grepl("Love", Song)) %>%
+  group_by(contain_love) %>%
+  summarize(num_love = n())
+
+names(contain_pro)
+# contain_pro %>% ggplot(aes(x=contain_pronouns, y=num_songs, fill = num_love)) +
+#    geom_bar(stat="identity")
+ 
+# contain_love
+
+
+
+
+```
+

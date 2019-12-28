@@ -1,0 +1,135 @@
+---
+title: "lab7"
+author: "Felix Pham"
+date: "10/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r, message=FALSE}
+
+library(tidyverse)
+library(babynames)
+data(babynames)
+data(births)
+
+head(births)
+
+ssa_births <- babynames %>%
+  rename(num_births = n) %>%
+  group_by(year) %>%
+  summarize(
+    num_entries = n(), #number of entry that year
+    births = sum(num_births)) %>%
+  filter(year <= 2012)
+
+  head(ssa_births)
+  
+census_births <- births
+
+head(census_births)
+
+ssa_births %>% pull(year) %>% unique()
+
+census_births %>% pull(year) %>% unique()
+
+joined_via_inner <- ssa_births %>%
+  inner_join(census_births, by =  "year")
+
+head(joined_via_inner)
+
+joined_via_inner %>% pull(year) %>% unique()
+
+joined_left <- ssa_births %>%
+  left_join(census_births, by = "year")
+joined_left %>% filter(year < 1919)
+
+joined_left %>% filter(year > 2008)
+
+joined_left %>% pull(year) %>% unique()
+
+joined_left %>% filter(is.na(births.x))
+
+joined_left %>% filter(is.na(births.y))
+
+joined_right <- ssa_births %>%
+  right_join(census_births, by = "year")
+
+joined_right %>% filter(year > 2012)
+
+joined_right %>% pull(year)
+
+
+
+joined_both <- ssa_births %>%
+  full_join(census_births, by = "year")
+joined_both %>% pull(year)
+
+joined_both %>%
+  filter(is.na(births.x))
+
+joined_both %>%
+  filter(is.na(births.y))
+
+joined_both %>%
+  ggplot(aes (x = births.x , y = births.y)) +
+  geom_point()
+
+
+```
+```{r, message=FALSE}
+
+library(tidyverse)
+library(nycflights13)
+
+flights %>%
+  group_by(carrier) %>%
+  summarize(avg_delay = mean(arr_delay, na.rm = TRUE)) %>%
+  left_join(airlines, by = c("carrier" = "carrier"))
+
+flights %>%
+  group_by(dest) %>%
+  summarize(N = n()) %>%
+  summarize(
+    mostCommonDest = dest[which.max(N)],
+    numFlights = max(N)) %>%
+  left_join(airports, by = c("mostCommonDest" = "faa")) %>%
+  select(mostCommonDest,name, numFlights)
+
+flights %>%
+  right_join(planes, by = c("tailnum" = "tailnum")) %>%
+  group_by(model) %>%
+  summarize(numFlights = n()) %>%
+  summarize(
+    mostCommonModel = model[which.max(numFlights)],
+    num_flights = max(numFlights))
+
+flights %>%
+  left_join(airports, by = c("dest" = "faa")) %>%
+  filter(is.na(name)) %>%
+  group_by(dest) %>%
+  summarize(numFlights = n()) %>%
+  arrange(desc(numFlights))
+
+flights %>%
+  left_join(planes, by = c("tailnum"= "tailnum")) %>%
+  ## filter(is.na(tailnum))%>%
+  
+  filter(is.na(model))%>% ## just filter any columns that is unique to the planes
+  
+  
+  group_by(tailnum) %>%
+  summarize(numFlights = n()) %>%
+  arrange(desc(numFlights))
+
+
+
+
+```
+
+

@@ -1,0 +1,105 @@
+---
+title: "lab3"
+author: "Felix Pham"
+date: "19/9/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+## Excersise 1
+```{r message=FALSE}
+library(tidyverse)
+library(RColorBrewer)
+display.brewer.all()
+data(storms)
+```
+## Exercise 2
+
+```{r}
+wind_boxplot <- ggplot(storms, aes(x = status, y = wind)) +
+  geom_boxplot()
+    
+wind_boxplot
+
+storms.modified <- mutate(
+  storms,
+  status = factor(status, levels =c("tropical depression", "tropical storm", "hurricane"))
+)
+
+wind_boxplot <- ggplot(storms.modified, aes(x = status, y = wind)) +
+geom_boxplot()
+  
+wind_boxplot
+
+wind_boxplot <- 
+  wind_boxplot + geom_boxplot(aes(fill = status))
+
+wind_boxplot + 
+    scale_fill_manual(
+    values = c("#268bd2", "#859900", "#dc322f"))
+```
+
+## Exercise 3
+
+```{r}
+
+wind_boxplot +
+  scale_fill_brewer(palette = "Set1")
+```
+
+## Exercise 4
+
+
+``` {r}
+wind_boxplot
+
+storms.1995 <-
+  filter(storms.modified, year == 1995)
+
+trajectory_plot <-
+  ggplot(storms.1995,
+         aes(x = long, y = lat, color = wind)) +
+  geom_point() +
+  facet_wrap(~name)
+trajectory_plot
+```
+
+## Exericse 5
+
+```{r}
+trajectory_plot_diff_color <- trajectory_plot +
+  scale_fill_brewer(palette = "Reds")
+
+trajectory_plot_diff_color
+```
+
+
+```{r message=FALSE}
+library(ggthemes)
+wind_boxplot +   
+  theme_fivethirtyeight() +
+  scale_fill_fivethirtyeight()
+```
+
+## Excersise 6
+```{r}
+women_plot <- ggplot(women, aes(y = weight, x = height))
+    
+women_plot + 
+  geom_point() + 
+  geom_line() + theme_linedraw() +
+  scale_fill_fivethirtyeight()
+
+```

@@ -1,0 +1,103 @@
+---
+title: "lab15"
+author: "Felix Pham"
+date: "10/12/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE}
+
+library(sf)
+nc <- system.file("shape/nc.shp", package = "sf") %>%
+  st_read()
+
+
+library(tidyverse)
+nc %>% select(AREA, NAME, geometry)
+
+## produce a map of the counties in North Carolina, colored by their size in land area.
+
+nc %>% select(AREA, geometry) %>% plot()
+```
+
+```{r message=FALSE}
+
+## use the geom_sf() function to create a similar plot as above.
+
+library(tidyverse)
+library(ggplot2)
+names(nc)
+nc <- nc %>% select(BIR74, BIR79, geometry) %>%
+  rename(
+  `1974` = BIR74,
+  `1979` = BIR79,
+  ) %>% gather( # Convert "wide" to "long"
+    key = "year",
+    value = "Births",
+    `1974`, `1979`)
+    # -c(AREA, PERIMETER, CNTY_, CNTY_ID, NAME, FIPS, FIPSNO, CRESS_ID, SID74, NWBIR74, SID79, NWBIR79, geometry))
+
+head(nc)
+
+
+```
+```{r message=FALSE}
+
+## use the geom_sf() function to create a similar plot as above.
+
+library(ggplot2)
+
+nc %>%
+  ggplot(aes(fill = Births)) +
+  geom_sf() +
+  facet_wrap(~year)
+
+
+```
+
+```{r message=FALSE}
+
+library(macleish)
+names(macleish_layers)
+
+
+library(magrittr)
+
+macleish_layers %>% extract2("buildings") %>% plot()
+
+## vignette("macleish") <-- tutorial
+
+macleish_layers %>% extract2("streams") %>% plot()
+
+library(leaflet)
+## First create a dataset for the particular building
+bechtel <- data.frame(lat = 42.449167, lon = -72.679389)
+## Now create an initial plot, which we will add to
+base_plot <- leaflet() %>%
+  addTiles() %>%
+  addMarkers(
+    lng = ~lon, lat = ~lat, 
+    data = bechtel,
+    popup = "Bechtel Environmental Classroom")
+base_plot %>%
+  addPolygons(
+    data = macleish_layers %>% extract2("buildings"), 
+    weight = 1,
+    color = "orange",
+    popup = ~name) %>%
+  addPolygons(
+    data = macleish_layers %>% extract2("streams"), 
+    weight = 1,
+    color = "blue") %>%
+  addPolygons(
+    data = macleish_layers %>% extract2("trails"), 
+    weight = 1,
+    color = "red",
+    fillOpacity = 0.2)
+
+```
+

@@ -1,0 +1,178 @@
+---
+title: "lab8"
+author: "Felix Pham"
+date: "15/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r message=FALSE}
+
+library(tidyverse)
+library(babynames)
+data(babynames)    ## SSA data
+data(births)       ## Census data
+
+
+census_births <- births
+ssa_births <- babynames %>%
+  rename(num_births = n) %>%
+  group_by(year) %>%
+  summarize(num_rows = n(), births = sum(num_births))
+total_births <-
+  ssa_births %>%
+  full_join(census_births, by = "year")
+head(total_births)
+
+total_births <- total_births %>%
+  select(-num_rows) %>%
+  rename(ssa = births.x, census = births.y)
+head(total_births)
+
+total_births %>%
+  ggplot(aes(x = year)) +
+  geom_line(aes(y = census), color = "blue") +
+  geom_line(aes(y = ssa), color = "orange") +
+  xlab("Year") + ylab("Total Births")
+
+births_long <- total_births %>%
+  gather(
+    key = "source",   
+    value = "births", 
+    census, ssa       
+                     
+    )
+head(births_long)
+
+births_long %>%
+  ggplot(aes(x = year, y = births, color = source)) +
+  geom_line()
+
+total_births %>%
+  ggplot(aes(x = ssa, y = census)) +
+  geom_point()
+
+## Use distinct() to find and remove duplicate entries
+births_long <- births_long %>%
+  distinct()
+## The problematic rows were the last few years
+## from the census; let's look at those
+births_long %>% 
+  filter(source == "census") %>%
+  tail()
+
+births_wide <- births_long %>%
+  spread(key = source, value = births)
+head(births_wide)
+
+births_wide %>% 
+  ggplot(aes(x = ssa, y = census)) +
+  geom_point()
+
+
+## The cor() function in mosaic is nicer than the standard one
+## since it has a data= argument.  The use= argument tells
+## cor() how to handle missing data.
+mosaic::cor(census ~ ssa, data = births_wide, use = "pairwise.complete")
+
+births_wide %>%
+  mutate(discrepancy = census - ssa) %>%
+  ggplot(aes(x = year, y = discrepancy)) +
+    geom_line() + ylab("Census Estimate - SSA Estimate")
+
+
+## Just to reduce the size of the data, we'll filter first by year
+babynames1950to2000 <- babynames %>% filter(year >= 1950 & year <= 2000)
+babynames1950to2000 %>%
+  group_by(year, name) %>%
+  summarize(num_births = sum(n))
+
+babynames1950to2000 %>%
+  group_by(year, name) %>%
+  summarize(
+    num_males = sum(ifelse(sex == "M", 1, 0)),
+    num_females = sum(ifelse(sex == "F", 1, 0)),
+    total_births = sum(n))
+
+babynames_wide1950to2000 <- 
+  babynames1950to2000 %>%
+  select(-prop) %>%
+  spread(
+    key   = sex,  
+    value = n,    
+    fill  = 0     
+    )
+head(babynames_wide1950to2000)
+
+babynames_wide1950to2000 <- 
+  babynames_wide1950to2000 %>%
+  mutate(total = M + F)
+
+## Let's find the names with the least asymmetry, aggregating over time:
+babynames_wide1950to2000 %>%
+  group_by(name) %>%
+  summarize(
+    M = sum(M),
+    F = sum(F),
+    total = sum(total)
+  ) %>%
+  filter(total >= 10000) %>%  # exclude very uncommon names
+  mutate(
+    prop_male = M/total,
+    asymmetry = abs(prop_male - 0.50)
+    ) %>%
+  arrange(asymmetry)
+
+```
+```{r message=FALSE}
+
+library(tidyverse)
+library(ggthemes)
+library(RColorBrewer)
+
+Suicide <- read_csv("suicide_total_deaths.csv")
+
+
+Suicide <- Suicide %>%
+  rename(country = country)
+
+head(Suicide)
+
+dim(Suicide)
+
+Suicide_gather <- Suicide %>%
+  gather(
+    key = "year",   
+    value = "value", 
+    -country       
+                     
+    )
+head(Suicide_gather)
+
+dim(Suicide_gather)
+
+
+
+Suicide_plot <- Suicide_gather %>%
+  mutate(year = parse_number(year)) %>%
+  filter((year >= 1990) & ((country == "Russia") | (country == "United States") | (country == "Japan")) ) %>%
+  ggplot(aes(x = year, y = value, color = country)) +
+  geom_point()+
+  geom_line()+
+  scale_x_continuous(breaks=seq(1990,2016,5)) + 
+  ggtitle("Total number of estimated deaths from self-inflicted injury")
+
+Suicide_plot
+
+Suicide_plot+
+  theme_economist() +
+  scale_fill_fivethirtyeight()
+
+
+```

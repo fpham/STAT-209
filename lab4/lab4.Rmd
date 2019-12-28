@@ -1,0 +1,207 @@
+---
+title: "lab4"
+author: "Felix Pham"
+date: "24/9/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercise 1
+This plot examines the age distribution of American boys named Josep and depicts how many “Josephs” were born in each year, and how many of those are estimated to be alive today. X-axis depicts the year, whereas y is mapped to 2 variables, Josephs alive today on Jan 2014 and number of Josephs born each year.
+
+```{r, message=FALSE}
+library(babynames)
+library(mdsr)
+library(ggthemes)
+
+data(lifetables)
+BabynameDist <- make_babynames_dist()
+glimpse(BabynameDist)
+
+Josephs <- filter(BabynameDist, name == "Joseph" & sex == "M")
+
+joseph_plot <- ggplot(Josephs, aes(x = year))
+joseph_plot
+glimpse(Josephs)
+joseph_plot <- joseph_plot +
+  geom_bar(
+    stat = "identity",
+    aes(y = est_alive_today / 1000),
+    fill = "#b2d7e9", 
+    color = "white"
+    )
+joseph_plot <- 
+  joseph_plot +
+  geom_line(aes(y = count_thousands))
+
+joseph_plot <- joseph_plot +
+  xlab("Birth Year") + 
+  ylab("Number of People (Thousands)")
+joseph_plot
+summary(joseph_plot)
+
+median.birthyear <- 
+  with(
+     data = Josephs, 
+     expr = Hmisc::wtd.quantile(
+         x = year, 
+         weights = est_alive_today, # cases in each year
+         prob = 0.5                 # the median is halfway through the cases
+         ))
+median.birthyear
+
+joseph_plot <- 
+  joseph_plot +
+      geom_bar(
+        stat = "identity",
+        aes(
+          y = ifelse(
+                  test = year == median.birthyear, # the condition (note == instead of =)
+                  yes  = est_alive_today / 1000,   # value if true
+                  no   = 0                         # value if false
+                  )),
+        fill = "#008fd5", # the darker blue color
+        color = "white") 
+joseph_plot
+
+joseph_plot <- joseph_plot + theme_fivethirtyeight()
+joseph_plot
+
+joseph_plot +
+  ggtitle("Age Distribution of American Boys Named Joseph") +     
+  geom_text(
+    x = 1935, y = 40, 
+    label = "Number of Josephs\nborn each year"
+    ) +
+  geom_text(
+    x = 1915, y = 13, 
+    label = "Number of Josephs\nborn each year\nestimated to be alive\non 1/1/2014", 
+    colour = "#b2d7e9"
+    ) +
+  geom_text(
+    x = 2003, y = 40, 
+    label = "The median\nliving Joseph\n in 2014 was 37 years old",
+    colour = "darkgray"
+    ) + 
+  geom_curve(
+    x = 1995, xend = 1974, y = 40, yend = 24,
+    arrow = arrow(length = unit(0.3, "cm")), 
+    curvature = 0.5
+    ) +   
+  ylim(0, 42)  ## change the range on the y axis to make room for annotation
+
+plot_template <- joseph_plot
+Colins <- filter(BabynameDist, name == "Colin" & sex == "M")
+colin_plot <- plot_template %+% Colins
+colin_plot
+
+median.birthyear <- 
+  with(
+     Colins, 
+     Hmisc::wtd.quantile(
+         x = year, 
+         weights = est_alive_today,
+         prob = 0.5)
+  )
+
+colin_plot
+
+colin_plot +
+  ggtitle("Age Distribution of American Boys Named Colin") +     
+  geom_text(
+    x = 1915, y = 5, 
+    label = "Number of Colins\nborn each year" # Use \n for a line break
+    ) +
+  geom_text(
+    x = 1915, y = 8, 
+    label = "Number of Colins\nborn each year\nestimated to be alive\non 1/1/2014", 
+    colour = "#b2d7e9"
+    ) +
+  geom_text(
+    x = 1968, y = 5, 
+    label = "The median\nliving Colin\n in 2014 was 17 years old",
+    colour = "darkgray"
+    ) + 
+  geom_curve(
+    x = 1977, xend = 1997, y = 5, yend = 3,
+    arrow = arrow(length = unit(0.3, "cm")), 
+    curvature = -0.5
+    ) +   
+  ylim(0, 10)  # change the range on the y axis to make room for annotation
+
+alice_template <- joseph_plot
+Alice <- filter(BabynameDist, name == "Alice" & sex == "F")
+alice_plot <- alice_template %+% Alice
+alice_plot
+
+median.birthyear <- 
+  with(
+     Alice, 
+     Hmisc::wtd.quantile(
+         x = year,
+         weights = est_alive_today,
+         prob = 0.5)
+  )
+
+median.birthyear
+
+alice_plot
+
+alice_plot +
+  ggtitle("Age Distribution of American Girls Named Alice") +     
+  geom_text(
+    x = 1950, y = 12, 
+    label = "Number of Alice\nborn each year" # Use \n for a line break
+    ) +
+  geom_text(
+    x = 1926, y = 8, 
+    label = "Number of Alice\nborn each year\nestimated to be alive\non 1/1/2014", 
+    colour = "#b2d7e9"
+    ) +
+  geom_text(
+    x = 1968, y = 9, 
+    label = "The median\nliving Alice\n in 2014 was 66 years old",
+    colour = "darkgray"
+    ) + 
+  geom_curve(
+    x = 1960, xend = 1948, y = 7, yend = 5,
+    arrow = arrow(length = unit(0.3, "cm")), 
+    curvature = -0.4
+    ) +   
+  ylim(0, 15)  # change the range on the y axis to make room for annotation
+
+
+## The facet_grid format is: row_variable ~ column_variable
+many_names_plot <- joseph_plot + facet_grid(name ~ sex) 
+many_names_plot %+%
+  filter(BabynameDist, name %in% c("Jessie", "Marion", "Jackie"))
+
+
+many_names_plot <- plot_template + facet_grid(sex ~ name)
+many_names_plot %+%
+  filter(BabynameDist, name %in% c("Jessie", "Marion", "Jackie"))
+
+
+## The facet_grid format is: row_variable ~ column_variable
+many_names_plot <- joseph_plot + facet_grid(sex ~ name) 
+many_names_plot %+%
+  filter(BabynameDist, name %in% c("Mary", "John"))
+```
+
+
+## Excersise 2 (Posted to Slack)
+
+## Exercise 3
+
+What I can take away from this plot is that Jackie, Jessie, and Marion are common names for girls rather than for boys. Also, people seemed to like naming their babies Marion back in the 20s, indicated by a huge spike, but not so much anymore nowadays.
+
+## Exercise 4 (Posted to Slack)
+
+## Exercise 5
+
+Personally, I find it challenging to remember all the codes for this process, which even some professionals tend to memorize only the reference points so that they can come back to the codes, or know what they need to complete the process. I think it is hard to keep all of it to memories. What is interesting though, is that we can now have templates for the plots we have created so that we can reuse it later using ggplot.
+
+

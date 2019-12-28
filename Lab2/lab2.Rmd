@@ -1,0 +1,86 @@
+---
+title: 'STAT 209: Lab 2'
+author: "Felix Pham"
+date: "10/9/2019"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+housing <- read_csv("http://colindawson.net/data/landdata-states.csv")
+glimpse(housing)
+
+hp2013Q1 <- housing %>% filter(Date == 2013.25)
+
+## Base plot
+
+base_plot <- ggplot(hp2013Q1, aes(y = Structure.Cost, x = Land.Value)) 
+
+base_plot <- base_plot + geom_point()
+
+base_plot <- base_plot + aes(color = Home.Value)
+
+base_plot <- base_plot + geom_point(aes(shape = region))
+
+base_plot
+
+home_value_plot <- ggplot(hp2013Q1, aes(y = Home.Value, x = Land.Value)) +
+  geom_point()
+home_value_plot <- home_value_plot + aes(color = Structure.Cost) + geom_point()
+
+home_value_plot
+
+home_line_plot <- base_plot + geom_point() + geom_line()
+
+home_line_plot
+
+home_smooth_plot <- base_plot + geom_point() + geom_smooth()
+
+home_smooth_plot
+
+home_plot <- ggplot(housing, aes(y = State, x = Home.Price.Index)) + geom_point(aes(color = Date), alpha = 0.3, size = 1.5, position = position_jitter(width = 0, height = 0.25))
+home_plot <- home_plot + scale_y_discrete(name = "State Abbreviation")
+home_plot <- home_plot + geom_vline(aes(xintercept = 1), linetype = 3, color = "black") + scale_color_gradient2(breaks = c(1975.25, 1994.25, 2013.25), labels = c(1971, 1994, 2013), low = "blue", high = "red", mid = "gray60", midpoint = 1994.25)
+
+home_plot
+
+state_plot <- ggplot(housing, aes(x = Date, y = Home.Value))
+
+state_plot <- state_plot + geom_line() + facet_wrap(~State, ncol = 10)
+
+state_plot
+
+price_plot <- ggplot(housing, aes(x = Date, y = Home.Price.Index))
+
+price_plot <- price_plot + geom_line() + facet_wrap(~State, ncol = 10)
+
+price_plot
+
+```
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

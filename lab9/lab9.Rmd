@@ -1,0 +1,89 @@
+---
+title: "lab9"
+author: "Felix Pham"
+date: "29/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Lab9
+
+
+```{r cars, message=FALSE}
+
+library(tidyverse)
+library(babynames)
+data(babynames)    ## SSA data
+data(births)       ## Census data
+
+
+babynames %>%
+  filter(name == "Felix") %>%
+  group_by(year) %>%
+  summarize(overall_percentage = 100 * sum(0.5 * prop)) %>%
+  arrange(desc(overall_percentage)) %>%
+  head(1) %>%
+  select(year, overall_percentage)
+
+most_popular_year <- function(name_of_interest)
+{
+  babynames %>%
+    filter(name == name_of_interest) %>%
+    group_by(year) %>%
+    summarize(overall_percentage = 100 * sum(0.5 * prop)) %>%
+    arrange(desc(overall_percentage))%>%
+    head(1) %>%
+    select(year, overall_percentage)
+  
+}
+
+most_popular_year("Megan")
+
+most_popular_year <- function(name_arg, num_years = 1)
+{
+  babynames %>%
+    filter(name == name_arg) %>%
+    group_by(year) %>%
+    summarize(
+      name = name[1],
+      overall_percentage = 100 * sum(0.5 * prop)) %>%
+    arrange(desc(overall_percentage))%>%
+    head(n = num_years) %>%
+    select(year, overall_percentage)
+  
+}
+
+most_popular_year("Colin")
+
+most_popular_year("Colin", 5)
+
+most_popular_year("Colin", num_years = 6)
+
+formals(most_popular_year)
+
+## rm(babynames) # remove the dataset
+## detach("package:babynames", unload = TRUE) # unload the library
+## most_popular_years("Colin")  ## ERRRORRRR
+
+most_popular_year2 <- function(dataset, name_of_interest, num_years = 1) 
+{
+  dataset %>%
+    filter(name == name_of_interest) %>%
+    group_by(year) %>%
+    summarize(
+      name = name[1],
+      overall_percentage = 100 * sum(0.5 * prop)
+      ) %>%
+    arrange(desc(overall_percentage)) %>%
+    head(n = num_years) %>%
+    select(name, year, overall_percentage)
+}
+
+babynames %>%
+  filter(year > 1920 & year < 1999) %>%
+  most_popular_year2(name_of_interest = "Mary")
+
+```

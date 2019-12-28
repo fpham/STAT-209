@@ -1,0 +1,134 @@
+---
+title: "lab5"
+author: "Felix Pham"
+date: "8/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r, message=FALSE}
+
+library(tidyverse)
+library(babynames)
+
+data(babynames) 
+glimpse(babynames)
+
+babynames %>%
+  filter(name == "Bella" & sex == "F") %>%
+  head()
+
+babynames %>%
+  select(year, name, n) %>%
+  head()
+
+Bellas <- babynames %>%
+  filter(name == "Bella" & sex == "F") %>%
+  select(year, n)
+head(Bellas)
+
+modified_babynames <- babynames %>%
+  mutate(popular = prop >= 0.01)
+head(modified_babynames)
+
+modified_babynames <- modified_babynames %>%
+  rename(is_popular = popular)
+head(modified_babynames)
+
+PopularBabynames <- modified_babynames %>%
+  filter(is_popular == TRUE) %>%
+  select(-is_popular)
+head(PopularBabynames)
+
+babynames %>%
+  arrange(desc(prop)) %>%
+  head()
+
+babynames %>%
+  filter(year == 2000 & sex == "M") %>%
+  arrange(desc(prop))
+
+babynames %>%
+  filter(year == 2000 & sex == "F") %>%
+  arrange(desc(prop))
+
+babynames %>%
+  filter(name == "Felix", sex == "M") %>%
+  arrange(desc(prop))
+
+babynames %>%
+  filter(name == "Felix", sex == "M") %>%
+  arrange(desc(n))
+
+modified_babynames <- modified_babynames %>%
+  rename(num_births = n)
+head(modified_babynames)
+
+Bellas <- modified_babynames %>%
+  filter(name == "Bella" & sex == "F")
+Bellas %>%
+  summarize(
+    num_rows = n(), 
+    most_bellas = max(num_births))
+
+Bellas %>%
+  summarize(
+    num_rows    = n(), 
+    peak_number = max(num_births),
+    peak_year   = year[which.max(num_births)])
+
+## Exercise 3
+babynames %>%
+  filter(year == 1982 & sex == "M") %>%
+  summarize(
+    num_rows          = n(),
+    peak_prop         = max(prop),
+    most_popular_name = name[which.max(prop)])
+
+## Exercise 4
+babynames %>%
+  filter(name == "Felix" & sex == "M") %>%
+  summarize(
+    num_rows          = n(),
+    peak_prop         = max(prop),
+    peak_year         = year[which.max(prop)])
+
+head(
+  select(
+    arrange(
+      filter(
+        modified_babynames, name == "Felix" & sex == "M"),
+      desc(num_births)),
+    year, num_births),
+  n = 10)
+
+modified_babynames %>%
+  filter(name == "Felix" & sex == "M") %>%
+  arrange(desc(num_births)) %>%
+  select(year, num_births) %>%
+  head()
+
+
+## Credit Exercise
+
+## My code to find the peak birth year for my name using summarize()
+
+babynames %>%
+  filter(name == "Felix" & sex == "M") %>%
+  summarize(
+    num_rows          = n(),
+    peak_prop         = max(prop),
+    peak_year         = year[which.max(prop)])
+
+## My code to find the peak birth year for my name using arrange()
+
+babynames %>%
+  filter(name == "Felix", sex == "M") %>%
+  arrange(desc(prop))
+
+## Felix hit its peak for males in 1895, not a very popular name though.

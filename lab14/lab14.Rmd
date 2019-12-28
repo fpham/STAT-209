@@ -1,0 +1,249 @@
+---
+title: "lab14"
+author: "Felix Pham"
+date: "5/12/2019"
+output: html_document
+---
+
+```{r setup, include=TRUE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(RCurl) # pull the text into R, using this package. 
+library(tidyverse)
+library(magrittr) # to use extract() and extract2() functions.
+
+macbeth_url <- "http://www.gutenberg.org/cache/epub/1129/pg1129.txt"
+macbeth_raw <- getURL(macbeth_url) # got the HTML into R
+
+## macbeth_raw
+
+macbeth_line <- macbeth_raw %>% 
+  strsplit("\r\n")
+
+## macbeth_line
+
+## doesn’t quite work as expected when the data structure we start with is a list instead of a vector.
+
+macbeth_lines <- macbeth_raw %>% 
+  strsplit("\r\n") %>% # break it up into lines, splitting on linebreaks
+  extract2(1) # equivalent to [[1]] return single element instead of [1] sub-list by using extract() extract2 mean 2 "[]".
+
+# Technically, nothing has changed except for the fact that instead of it being a list of 1 "thing", now we extract the thing and make it stand on its own!
+
+## macbeth_lines
+
+# \r Carriage 
+# return \n newline
+
+```
+Exercise 1: Use Regular Expressions to find all occurrences of either MACBETH or LADY MACBETH preceded by two spaces and followed by a period, at the start of a line.
+```{r message=FALSE}
+# Use Regular Expressions to find all occurrences of either MACBETH or LADY MACBETH preceded by two spaces and followed by a period, at the start of a line.
+
+
+# MACBETH\\. = follow by a period
+# ? = Matches at most 1 time; optional string
+# ^ = Start of the string
+# * = Matches at least 0 times
+# grep(pattern, string, value = TRUE) --> Detect pattern, return string
+
+
+set.seed(42)
+grep("^  ([A-Z][A-Z]* )?MACBETH\\.", macbeth_lines, value = TRUE) %>% 
+  sample(10) # random sample, since head() only shows MACBETH lines
+
+```
+
+```{r message=FALSE}
+
+## Here's one that is more specific:
+grep("^  (LADY )*MACBETH", macbeth_lines, value = TRUE) %>% 
+  sample(10)
+
+```
+Exercise 2: Get the line numbers and lines for all spoken lines (i.e., starting with two spaces, any character name in all caps, followed by a period)
+
+```{r message=FALSE}
+
+# grep(pattern, string) --> Detect pattern, return the location of the string
+
+line_numbers <-
+  grep("^  [A-Z][A-Z ]+\\.", macbeth_lines) # return the line numbers.
+
+line_text <- macbeth_lines %>% extract(line_numbers) # sub-list of line text based on line numbers
+
+data.frame(line_numbers, line_text) %>% head() # create a new dataframe with those two variables.
+
+```
+Exercise 3: Using the line text you extracted above, use str_extract() from the stringr library to pull out just the character name from each line. The syntax is str_extract(SOURCE_TEXT, QUOTED_REGEX_PATTERN) (or you can use the pipe syntax).
+
+```{r message=FALSE}
+
+## Note again the space in the brackets.  This is needed to match character
+## names that contain spaces (such as LADY MACBETH)
+characters <- line_text %>% str_extract("^  [A-Z][A-Z ]+\\.")
+characters %>% sample(10)
+
+```
+Aside (using gsub())
+
+```{r message=FALSE}
+
+spoken_text <- 
+  mapply(
+    FUN      = gsub, 
+    pattern  = characters,  ## vary the pattern= argument over elements of `characters`
+    x        = line_text,   ## vary the x= argument over elements of `line_text`
+    MoreArgs = list(replacement = "") ## hold the replacement= argument fixed
+    )
+spoken_text %>% sample(10)
+
+```
+
+```{r message=FALSE}
+frame <- 
+  data.frame(
+    line = line_numbers, 
+    character = characters,
+    line_text = spoken_text)
+head(frame)
+
+```
+## Cleaning the data: Pulling out just character names
+
+```{r message=FALSE}
+
+## Put parens around the part of the pattern you care about
+## Refer to "whatever is matched" with \\1 in the replacement string
+## Each parenthetical expression gets an index, \\1, \\2, etc.
+frame <- frame %>%
+  mutate(
+    character = gsub("^  ([A-Z ]+)\\.", "\\1", character))
+head(frame)
+
+```
+
+## Computing some summary statistics
+
+Exercise 4: Use your data wrangling skills to compute the key summary statistics for each character: first line, median line, last line, total number of lines, and percentage of total lines. Sort the results in decreasing order of number of lines. There’s no text manipulation needed here, but it’s a necessary step for our graphs.
+
+```{r message=FALSE}
+
+library(mosaic) # alters the functionality of sample()
+character_stats <- frame %>%
+  group_by(character) %>%
+  summarize(
+    num_lines = n(),
+    pct_lines = 100 * n() / nrow(frame),
+    first_appearance = min(line),
+    halfway_point = round(median(line)),
+    last_appearance = max(line)) %>%
+  arrange(desc(num_lines))
+character_stats %>% sample(10)
+
+
+character_stats <- character_stats %>%
+  mutate(
+    character = factor(character, levels = character))
+
+character_stats %>% 
+  ggplot(aes(x = character, y = pct_lines)) +
+  geom_bar(stat = "identity") +
+  scale_x_discrete(name = "Character") +
+  scale_y_continuous(name = "% of Total Lines") +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1))
+
+```
+
+## Computing some summary statistics
+
+Exercise 5: Use filter() and summarize() to count up the lines and find the first and last appearance, by any character with less than 1% of total lines. (For the median just input NA) Bind this new summary data to the original data, having excluded the individual low-activity characters
+
+```{r message=FALSE}
+### Combine infrequent speakers into an "OTHERS" bin
+low_freq_chars <- character_stats %>%
+  filter(pct_lines < 1) %>%
+  summarize(
+    character = "OTHERS",
+    num_lines = sum(num_lines),
+    pct_lines = sum(pct_lines),
+    first_appearance = min(first_appearance),
+    halfway_point = NA,
+    last_appearance = max(last_appearance))
+
+### Replacing the lower activity characters with "OTHERS"
+character_stats <- 
+  character_stats %>% 
+  filter(pct_lines >= 1) %>%
+  rbind(low_freq_chars)    
+
+```
+
+Exercise 6:
+
+```{r message=FALSE}
+### Bar plot v. 2
+character_stats %>% 
+  ggplot(aes(x = character, y = pct_lines)) +
+  geom_bar(stat = "identity") +
+  scale_x_discrete(name = "Character") +
+  scale_y_continuous(name = "% of Total Lines") +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1))
+
+```
+
+Exercise 7: See if you can produce the following graph, showing, for each character that has at least 1% of total lines, when they first speak, when they have spoken half their lines, and when they last speak.
+
+```{r message=FALSE}
+
+### Graphing each character's first, middle and last lines
+character_stats %>%
+  filter(character != "OTHERS") %>%  
+  rename(
+    first  = first_appearance, 
+    middle = halfway_point, 
+    last   = last_appearance) %>%
+  mutate(
+    character = reorder(character, first, min)) %>%
+  gather(
+    key   = label, 
+    value = line, 
+    first, middle, last) %>%
+  ggplot(
+    aes(
+      x     = character, 
+      y     = line)) +
+  geom_point(aes(size  = pct_lines)) + 
+  geom_line() +
+  coord_flip() +
+  scale_y_continuous(name = "Line #") +
+  scale_x_discrete(name = "Character") +
+  guides(size = guide_legend(title = "% of Total Lines"))
+
+```
+```{r message=FALSE}
+
+library(RCurl)
+library(tidyverse)
+library(magrittr)
+library(rvest)
+RMJ <- "https://www.gutenberg.org/cache/epub/1112/pg1112.txt" 
+RMJRaw <- getURL(RMJ)
+RMJPara <- RMJRaw %>% 
+  strsplit("\r\n") %>%
+  extract2(1)
+library(wordcloud)
+library(tm) # text-mining package
+RMJCorpus <- RMJPara %>% 
+  VectorSource() %>% # change the data type
+  VCorpus() %>% # change the data type
+  tm_map(stripWhitespace) %>% # remove spaces/line-breaks, etc.
+  tm_map(removeNumbers) %>% # remove line numbers, etc.
+  tm_map(removePunctuation) %>% # remove Punctuation.
+  tm_map(content_transformer(tolower)) %>% # all lowercase.
+  tm_map(removeWords, stopwords("english")) # remove function words
+RMJCorpus %>% wordcloud(max.words = 50, scale = c(4, 1),colors=brewer.pal(8, "Set1"), random.color = FALSE)
+
+```
+

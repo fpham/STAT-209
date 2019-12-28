@@ -1,0 +1,79 @@
+---
+title: "lab12Exercise"
+author: "Felix Pham"
+date: "19/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(dbplyr)  
+library(mdsr)    ## Package for our book
+library(RMySQL)  ## Standard R/SQL interface package
+
+db <- dbConnect_scidb("imdb")
+
+```
+
+```{sql connection=db}
+SHOW TABLES;
+```
+
+```{sql connection=db}
+
+SELECT * FROM title LIMIT 0,100; -- select title table first 100 rows
+
+```
+
+```{sql connection=db}
+
+SELECT * FROM title -- choose movie of our choice
+WHERE title LIKE "Deez Nutz" 
+  AND production_year = 2016
+LIMIT 0,5;
+
+```
+
+```{sql connection=db}
+
+SELECT * FROM name LIMIT 0,5; -- select name table first 10 rows
+
+```
+
+```{sql connection=db}
+SELECT id,name,imdb_index
+FROM name
+WHERE name LIKE '%Davis, Viola%'
+  AND imdb_index = "I"
+LIMIT 0,100;
+```
+
+``` {sql connection=db}
+
+SELECT 
+  t.title, -- choose title column from "title" table which we join later (can "mutate" as "t" for short)
+  cn.name, -- choose char_name column from table "char_name" (can "mutate" as "cn" for short)
+  t.production_year -- choose production_year column from "title" table which we later join
+FROM cast_info as ci -- ci for short of cast_info
+JOIN name as n ON ci.person_id = n.id -- equals cast_info %>% inner_join(name, by = c("id" = "id"))
+
+-- to get the name
+
+JOIN title as t ON ci.movie_id = t.id -- equals %>% inner_join(title, by = c("id" = "id"))
+
+-- to get the movie title
+
+LEFT JOIN char_name as cn ON ci.person_role_id = cn.id 
+WHERE ci.person_id = 2977372 -- Viola Davis’s id
+  AND t.kind_id = 1 -- to return movies? kind_id are mostly 7 but I do not quite understand how this returns movie. In the previous exercise, I let it equal 7 but I consulted your sample solution.
+  
+ORDER BY production_year ASC -- Sort production_year column by ascending order
+
+LIMIT 0,100; -- ALWAYS the last thing in the query. Is there a way to use is.na() function?
+
+
+```
+

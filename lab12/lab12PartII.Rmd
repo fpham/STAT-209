@@ -1,0 +1,115 @@
+---
+title: "lab12 Part II"
+author: "Felix Pham"
+date: "19/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(dbplyr)  
+library(mdsr)    ## Package for our book
+library(RMySQL)  ## Standard R/SQL interface package
+
+db <- dbConnect_scidb("airlines")
+
+```
+
+```{sql connection=db}
+
+SELECT 
+  carrier,
+  count(*)       AS num_flights,
+  avg(dep_delay) as avg_delay
+FROM flights
+WHERE year  = 2012 
+  AND month = 6 
+  AND day   = 29
+GROUP BY carrier -- put at the end of aggregration.
+HAVING num_flights >= 1000
+ORDER BY avg_delay ASC; -- unlike WHERE, the ORDER BY component here is sorting the output based on what shows up in the results, not what was in the original data.
+
+```
+
+```{sql connection=db}
+
+SHOW TABLES; -- dbListTables() to list the tables in a database using R code; 
+             -- the SQL equivalent of this is SHOW TABLES
+
+```
+
+```{sql connection=db}
+
+DESCRIBE carriers; -- To see what variables (“fields” in database lingo) are in a particular table, we can use DESCRIBE (similar to glimpse() in R).
+
+```
+
+```{sql connection=db}
+
+SELECT 
+  f.carrier, -- flights.carrier
+  c.name, -- carrier.name
+  count(*) AS num_flights, -- same as funtion n()
+  avg(dep_delay) as avg_delay -- same as mean()
+FROM flights AS f
+LEFT JOIN carriers AS c ON f.carrier = c.carrier -- same as left_join(... , by ....)
+WHERE year = 2012 AND month = 6 AND day = 29
+GROUP BY carrier
+HAVING num_flights > 1000
+ORDER BY avg_delay ASC;
+
+```
+
+```{sql connection=db}
+
+(SELECT 
+  f.carrier,
+  c.name,
+  year, month, day,
+  count(*) AS num_flights
+FROM flights AS f
+LEFT JOIN carriers AS c ON f.carrier = c.carrier
+WHERE year = 2012 AND month = 6 AND day = 29 -- 6/29/2012
+GROUP BY carrier
+HAVING num_flights > 1000)
+
+
+UNION -- Merging multiple queries: UNION (cf. bind_rows()) concatenate the queries with the keyword UNION
+
+
+(SELECT 
+  f.carrier, -- select go first even thoguh we "mutate" columns later in FROM
+  c.name,
+  year, month, day,
+  count(*) AS num_flights
+FROM flights AS f -- make the set name shorter as f
+LEFT JOIN carriers AS c ON f.carrier = c.carrier -- make the set name shorter as c
+-- same as flights %>% left_join(carriers, by = c("carrier" = "carrier"))
+
+WHERE year = 2014 AND month = 10 AND day = 13 -- 10/13/2014
+GROUP BY carrier
+HAVING num_flights > 1000)
+
+
+ORDER BY num_flights DESC;
+
+```
+
+```{sql connection=db}
+
+SELECT 
+  f.carrier,
+  c.name,
+  year, month, day,
+  count(*) AS num_flights
+FROM flights AS f
+LEFT JOIN carriers AS c ON f.carrier = c.carrier
+WHERE (year = 2012 AND month = 6 AND day = 29) OR
+      (year = 2014 AND month = 10 AND day = 13)
+GROUP BY carrier, year, month, day
+HAVING num_flights > 1000
+ORDER BY num_flights DESC; -- same as above code chunk using only WHERE and OR
+```

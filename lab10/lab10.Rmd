@@ -1,0 +1,295 @@
+---
+title: "lab10"
+author: "Felix Pham"
+date: "5/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+
+```{r, message=FALSE}
+
+library(tidyverse)
+library(Lahman)
+
+
+data(Batting)  
+data(Master)   
+
+head(Batting)
+
+head(Master)
+
+library(lubridate)
+yearss <- year(as.Date(Master$debut, format = "%Y-%m-%d"))
+
+Master <- Master %>% mutate (Year = yearss)
+
+head(Master)
+
+
+filter(Master, nameFirst == "Manny", nameLast == "Ramirez")
+
+MannyData <- filter(Batting, playerID == "ramirma02")
+head(MannyData)
+
+MannyData %>% 
+  summarize(
+    rookie_year = min(yearID), 
+    final_year = max(yearID),
+    num_seasons = n_distinct(yearID),
+    num_teams = n_distinct(teamID)
+    )
+
+MannyData %>%
+  group_by(yearID) %>%
+  summarize(num_teams = n_distinct(teamID)) %>%
+  filter(num_teams > 1)
+
+
+MannyHRs <- MannyData %>% 
+  group_by(yearID) %>%
+  summarize(total_homerun = sum(HR))
+MannyHRs %>%
+  ggplot(aes(x = yearID, y = total_homerun)) +
+  geom_line() +
+  xlab("Season") +
+  ylab("Total Home Runs") 
+
+MannyHRs %>%
+  ggplot(aes(x = yearID, y = total_homerun)) +
+  geom_line() +
+  xlab("Season") +
+  ylab("Total Home Runs") +
+  scale_x_continuous(breaks = seq(1993, 2011, by = 3))
+
+MannyHRs <- MannyData %>%
+  group_by(yearID) %>%
+  summarize(
+    total_homerun = sum(HR),
+    total_games = sum(G)
+  ) %>%
+  mutate(total162 = total_homerun / total_games * 162)
+MannyHRs %>%
+  ggplot(aes(x = yearID, y = total162)) +
+  geom_line() +
+  xlab("Season") +
+  ylab("Home Runs per 162 games") +
+  scale_x_continuous(breaks = seq(1993, 2011, by = 3))
+
+
+names(Batting)
+
+names(Master)
+
+MannyData <- Batting %>%
+  filter(playerID == "ramirma02") %>%
+  left_join(Master, by = c("playerID" = "playerID")) %>%
+  mutate(Age = yearID - birthYear) %>%
+  group_by(Age) %>%
+  summarize(
+    total_homerun = sum(HR),
+    total_games = sum(G),
+    total162 = total_homerun / total_games * 162
+    )
+MannyData %>%
+  ggplot(aes(x = Age, y = total162)) +
+  geom_line() +
+  xlab("Age") +
+  ylab("Home Runs per 162 games") +
+  scale_x_continuous(breaks = seq(18, 50, by = 2))
+
+
+
+
+MannyData <- Batting %>%
+  filter(playerID == "ramirma02") %>%
+  left_join(Master, by = c("playerID" = "playerID")) %>%
+  mutate(Age = yearID - birthYear) %>%
+  group_by(Age, playerID, yearID) %>%
+  summarize_at(
+    vars(AB, H, BB, HBP, SF, X2B, X3B, HR),
+    list(sum)  
+    ) %>%
+  mutate(
+    X1B = H - X2B - X3B - HR,
+    OBP = (H + BB + HBP) / (AB + BB + HBP + SF),
+    SLG = (1*X1B + 2*X2B + 3*X3B + 4*HR) / AB,
+    OPS = OBP + SLG)
+
+
+MannyData %>%
+  ggplot(aes(x = Age, y = OBP)) +
+  geom_line() +
+  xlab("Age") +
+  ylab("OBP") +
+  scale_x_continuous(breaks = seq(18, 50, by = 2))
+
+
+MannyData %>%
+  ggplot(aes(x = Age, y = SLG)) +
+  geom_line() +
+  xlab("Age") +
+  ylab("SLG") +
+  scale_x_continuous(breaks = seq(18, 50, by = 2))
+
+MannyData %>%
+  ggplot(aes(x = Age, y = OPS)) +
+  geom_line() +
+  xlab("Age") +
+  ylab("OPS") +
+  scale_x_continuous(breaks = seq(18, 50, by = 2))
+
+LeagueData <- Batting %>%
+  mutate(X1B = H - X2B - X3B - HR) %>%
+  group_by(yearID) %>%
+  summarize(
+    lgOPS = 
+      sum(H + BB + HBP, na.rm = TRUE) / sum(AB + BB + HBP + SF, na.rm = TRUE) +
+      sum(X1B + 2*X2B + 3*X3B + 4*HR, na.rm = TRUE) / sum(AB, na.rm = TRUE))
+tail(LeagueData)
+
+
+MannyData <- MannyData %>%
+  left_join(LeagueData, by = c("yearID" = "yearID")) %>%
+  mutate(OPSplus = 100 * OPS / lgOPS)
+MannyData %>%
+  ggplot(aes(x = Age, y = OPSplus)) +
+  geom_line() +
+  xlab("Age") +
+  ylab("OPS+") +
+  scale_x_continuous(breaks = seq(18, 50, by = 2))
+
+
+
+library(magrittr)
+RipkenBioData <- filter(Master, nameFirst == "Cal", nameLast == "Ripken")
+ripkenID <- RipkenBioData %>% pull(playerID) %>% extract(1)
+
+CalData <- Batting %>%
+  filter(playerID == ripkenID) %>%
+  left_join(Master, by = c("playerID" = "playerID")) %>%
+  mutate(Age = yearID - birthYear) %>%
+  group_by(Age, playerID, yearID) %>%
+  summarize_at(
+    vars(AB, H, BB, HBP, SF, X2B, X3B, HR),
+    list(sum)
+    ) %>%
+  mutate(
+    X1B = H - X2B - X3B - HR,
+    OBP = (H + BB + HBP) / (AB + BB + HBP + SF),
+    SLG = (1*X1B + 2*X2B + 3*X3B + 4*HR) / AB,
+    OPS = OBP + SLG) %>%
+  left_join(LeagueData, by = c("yearID" = "yearID")) %>%
+  mutate(OPSplus = 100 * OPS / lgOPS)
+CalData %>%
+  ggplot(aes(x = Age, y = OPSplus)) +
+  geom_line() +
+  xlab("Age") +
+  ylab("OPS+") +
+  scale_x_continuous(breaks = seq(18, 50, by = 2))
+
+getOPSdata <- function(firstName, lastName)
+{
+  playerBio <- filter(Master, nameFirst == firstName, nameLast == lastName)
+  targetID <- playerBio %>% pull(playerID) %>% extract(1)
+  result <- Batting %>%
+    filter(playerID == targetID) %>%
+    left_join(Master, by = c("playerID" = "playerID")) %>%
+    mutate(Age = yearID - birthYear) %>%
+    group_by(Age, playerID, yearID) %>%
+    summarize_at(
+      vars(AB, H, BB, HBP, SF, X2B, X3B, HR),
+      list(sum)
+      ) %>%
+    mutate(
+      X1B = H - X2B - X3B - HR,
+      OBP = (H + BB + HBP) / (AB + BB + HBP + SF),
+      SLG = (1*X1B + 2*X2B + 3*X3B + 4*HR) / AB,
+      OPS = OBP + SLG) %>%   
+    left_join(LeagueData, by = c("yearID" = "yearID")) %>%
+    mutate(OPSplus = 100 * OPS / lgOPS)
+  return(result)
+}
+getOPSdata("Babe", "Ruth")
+
+
+firstList <- c("Ty", "Babe", "Lou", "Ted", "Jackie", "Hank", 
+               "Roberto", "Reggie", "Cal", "Barry", "Alex", "Miguel")
+lastList <- c("Cobb", "Ruth", "Gehrig", "Williams", "Robinson", "Aaron", 
+              "Clemente", "Jackson", "Ripken", "Bonds", "Rodriguez", "Cabrera")
+allData <- 
+  mapply(
+    FUN = getOPSdata, 
+    firstName = firstList, 
+    lastName = lastList,
+    SIMPLIFY = FALSE) %>%
+  bind_rows()
+allData %>% select(Age,playerID, yearID, OPSplus)
+
+head(allData)
+
+
+allData <- allData %>%
+  left_join(Master, by = c("playerID" = "playerID")) %>%
+  rename(Player = nameLast)
+  
+
+allData %>%
+  ggplot(aes(x = Age, y = OPSplus, color = Player)) +
+  geom_line() +
+  xlab("Age") +
+  ylab("OPS+") +
+  scale_x_continuous(breaks = seq(18, 50, by = 2))
+
+
+names(allData)
+
+getmaxOPSPLus <- function(lastName)
+{
+  allData %>% filter(!is.na(OPSplus) & Player == lastName) %>%
+  group_by(Player, Year, Age) %>%
+
+  summarize(
+    peak_OPSplus = max(OPSplus),
+    peak_year = Year[which.max(OPSplus)],
+    peak_age = Age[which.max(OPSplus)]) %>%
+    mutate(MAX_OPSPLus = max(peak_OPSplus)) %>%
+    summarize(
+      new_peakOPSplus = max(peak_OPSplus),
+      new_peak_year = Year[which.max(peak_OPSplus)],
+      new_peak_age = Age[which.max(peak_OPSplus)])
+
+}
+getmaxOPSPLus("Aaron")
+
+
+allData2 <- 
+  mapply(
+    FUN = getmaxOPSPLus, 
+    lastName = lastList,
+    SIMPLIFY = FALSE) %>%
+  bind_rows()
+
+head(allData2)
+
+names(allData2)
+
+allData2 %>%  
+  ggplot(aes(x = new_peak_year, y = new_peak_age)) +
+  geom_point() +
+  geom_smooth() +
+  xlab("Debut Year") +
+  ylab("Age") +
+  scale_x_continuous(breaks = seq(1940, 2010, by = 10))
+
+
+```
+
+

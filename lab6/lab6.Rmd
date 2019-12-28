@@ -1,0 +1,163 @@
+---
+title: "lab6"
+author: "Felix Pham"
+date: "8/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r, message=FALSE}
+library(tidyverse)
+library(babynames)
+library(RColorBrewer)
+palette(brewer.pal(n = 3, name = "Set2"))
+
+babynames %>%
+  filter(name == "Jessie") %>%
+  ggplot(aes(x = year, y = n, color = sex))+
+  geom_line()
+
+babynames %>%
+  filter(name == "Jessie" & year == 1982) %>%
+  summarize(
+    total = sum(n),
+    num_males = sum(ifelse(sex =="M", n, 0))) %>%
+  mutate(prop_males = num_males / total)
+
+## The ifelse() command operates on each entry in a variable, returning a list of values the same length as the input. In this case, ifelse(sex == "M", n, 0) says to look at the sex column, and for each entry if it is equal to "M", place the value of n in that same position, otherwise put zero. Then, the sum() function adds up the results.
+
+
+jessies_by_year <-
+  babynames %>%
+  filter(name == "Jessie") %>%
+  group_by(year) %>%
+  summarize(
+    num_rows = n(),
+    total_births = sum(n),
+    num_males = sum(ifelse(sex =="M", n, 0))
+  )
+
+babynames %>%
+  filter(name == "Jessie" & year == 1982) %>%
+  summarize(
+    total = sum(n),
+    num_males = sum(ifelse(sex == "M", n, 0))) %>%
+  mutate(prop_males = num_males / total)
+
+jessies_by_year <-
+  babynames %>%
+    filter(name == "Jessie") %>%
+    group_by(year) %>%
+    summarize(
+      num_rows = n(),        # just a sanity check
+      total_births = sum(n), # total "Jessies" that year
+      num_males = sum(ifelse(sex == "M", n, 0)), # conditional counting
+      num_females = sum(ifelse(sex == "F", n, 0))) %>%
+    mutate(prop_males = num_males / total_births)
+jessies_by_year
+
+jessies_by_year %>%
+  ggplot(aes(x = year, y = prop_males)) +
+  geom_line() +
+  geom_hline(yintercept = 0.5, lty = 3) +
+  scale_y_continuous(name = "Proportion Male") +
+  scale_x_continuous(name = "Year", breaks = seq(1880, 2020, by = 10)) +
+  ggtitle("Gender Breakdown of the name 'Jessie' in the U.S. over Time")
+
+### Version using arrange()
+babynames %>%
+  filter(name == "Jessie") %>%
+  group_by(year) %>%
+  summarize(total_births = sum(n)) %>%
+  arrange(desc(total_births)) %>%
+  head(n = 1)
+
+## Version using a second summarize()
+babynames %>%
+  filter(name == "Jessie") %>%
+  group_by(year) %>%
+  summarize(total_births = sum(n)) %>%
+  summarize(
+    peak_number = max(total_births),
+    peak_year = year[which.max(total_births)])
+
+babynames %>%
+  group_by(name) %>%
+  summarize(
+    first_year = min(year),
+    last_year = max(year))
+
+babynames %>%
+  group_by(name) %>%
+  summarize(num_rows = n()) %>%
+  filter(num_rows == 2 * (2017 - 1880 + 1))
+
+babynames %>%
+  filter(year >= 1990 & year < 2000) %>%
+  group_by(name) %>%
+  summarize(num_births = sum(n)) %>%
+  arrange(desc(num_births)) %>%
+  head(n = 10)
+
+
+
+popular_names_1982 <- 
+  babynames %>%
+  filter(year == 1982) %>%
+  group_by(name) %>%
+  summarize(total_for_name = sum(n)) %>%
+  mutate(
+    overall_total = sum(total_for_name),
+    proportion_of_total = total_for_name / overall_total) %>%
+  filter(proportion_of_total >= 0.005) %>%
+  select(name)
+popular_names_1982
+babynames %>%
+  filter(name %in% pull(popular_names_1982, name)) %>%
+  group_by(name) %>%
+  summarize(first_year = min(year)) %>%
+  summarize(
+    youngest_name = name[which.max(first_year)],
+    first_appearance = max(first_year))
+
+
+
+babynames %>%
+  group_by(year) %>%
+  summarize(
+    total_names = n(),
+    num_male_names = sum(ifelse(sex == "M", 1, 0)),
+    num_female_names = sum(ifelse(sex == "F", 1, 0))) %>%
+  ggplot(aes(x = year)) +
+    geom_line(aes(y = total_names, color = "Total")) +
+    geom_line(aes(y = num_male_names, color = "Male")) +
+    geom_line(aes(y = num_female_names, color = "Female")) +
+    ylab("Number of different names") +
+  scale_color_manual(
+    name = "Sex", 
+    values = c(Total = 1, Male = 2, Female = 3))
+
+
+
+base_ball_data <- read.csv("https://raw.githubusercontent.com/guru99-edu/R-Programming/master/lahman-batting.csv") %>%
+  
+select(c(playerID, yearID, AB, teamID, lgID, G, R, HR, SH))  %>% 
+
+arrange(playerID, teamID, yearID)
+
+base_ball_data %>% 
+group_by(lgID) %>% 
+summarize(mean_home_run = mean(HR)) %>% 
+ggplot(aes(x = lgID, y = mean_home_run, fill = lgID)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    labs(
+        x = "baseball league",
+        y = "Average home run")
+
+```

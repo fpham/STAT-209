@@ -1,0 +1,126 @@
+---
+title: "lab13"
+author: "Felix Pham"
+date: "23/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggthemes)
+```
+
+```{r, message=FALSE}
+library(dbplyr)  
+library(mdsr)    ## Package for our book
+library(RMySQL)  ## Standard R/SQL interface package
+
+db <- dbConnect_scidb("airlines")
+
+```
+
+```{sql connection=db}
+SELECT year,carrier,flight,arr_delay FROM flights
+
+  LIMIT 0,100
+```
+
+```{sql connection=db}
+SELECT
+  365 * sum(1) as num_flights, -- could also do count(*)
+  sum(if(arr_delay < 0, 1, 0)) / sum(1) AS early_pct,
+  365 * sum(if(arr_delay > 0, arr_delay, 0)) / 1000000 AS min_late, -- in millions
+  365 * sum(if(arr_delay < 0, arr_delay, 0)) / 1000000 AS min_early,
+  365 * sum(arr_delay) / 1000000 AS net_delay
+FROM flights AS f
+WHERE year = 2014 AND month = 1 AND day = 4
+LIMIT 0,10
+```
+```{sql connection=db}
+SELECT
+    f.carrier,
+    c.name,
+    sum(if(arr_delay BETWEEN 15 AND 119, 1, 0)) / count(*) as short_delay_percent,
+    sum(if(arr_delay >= 120 OR cancelled = 1 OR diverted = 1, 1, 0)) / count(*) as long_delay_percent
+FROM flights as f
+LEFT JOIN carriers AS c ON f.carrier = c.carrier
+WHERE year = 2014 AND month = 1 AND day = 4
+GROUP BY f.carrier
+ORDER BY short_delay_percent DESC
+LIMIT 0,50
+```
+```{r, message=FALSE}
+query <-
+  "SELECT
+    f.carrier,
+    c.name,
+    sum(if(arr_delay BETWEEN 15 AND 119, 1, 0)) / sum(1) as short_delay_percent,
+    sum(if(arr_delay >= 120 OR cancelled = 1 OR diverted = 1, 1, 0)) / sum(1) as long_delay_percent
+FROM flights as f
+LEFT JOIN carriers AS c ON f.carrier = c.carrier
+WHERE year = 2014 AND month = 1 AND day = 4
+GROUP BY f.carrier
+ORDER BY short_delay_percent DESC
+LIMIT 0,50"
+
+```
+
+
+``` {r, message=FALSE}
+
+summarydelay <- db %>% dbGetQuery(query) %>% collect()
+summarydelay
+
+summarydelay <- summarydelay %>%
+  
+  mutate(name = gsub("Air(lines|ways| Lines)", "", name)) %>%
+
+  mutate(name = gsub("(Inc\\.|Co\\.|Corporation)", "", name)) %>%
+
+  mutate(name = gsub("\\(.*\\)", "", name)) %>%
+  
+  mutate(name = gsub(" *$", "", name))
+
+```
+```{r, message=FALSE}
+
+summarydelay %>%
+  ggplot(aes(x = name)) + 
+  geom_bar(
+    aes(y = short_delay_percent + long_delay_percent), 
+    fill = "gold", 
+    stat = "identity") +
+  geom_bar(
+    aes(y = long_delay_percent), 
+    fill = "red", 
+    stat = "identity")
+```
+
+```{r, message=FALSE}
+delay_gather <- summarydelay %>%
+  mutate(name = reorder(name, short_delay_percent, max)) %>%
+  gather(key = delay_type, value = delay_percent, short_delay_percent, long_delay_percent) %>%   
+  arrange(name)
+
+delay_gather
+
+```
+
+```{r, message=FALSE}
+
+delay_gather <- delay_gather %>%
+  ggplot(aes(x = name, y = delay_percent, fill = delay_type, label = scales::percent(delay_percent))) +
+  geom_bar(stat = "identity") +
+  scale_fill_discrete(name = "Delay Types", labels = c("FLIGHTS DELAYED 15-119 MINUTES", "FLIGHTS DELAYED 120+ MINUTES, CANCELLED OR DIVERTED")) +
+  scale_fill_manual(values = c("red", "gold")) +
+  geom_text(size = 2, position = position_stack(vjust = 0.5)) +
+  scale_y_continuous(labels = scales::percent) +
+  coord_flip() +
+  theme_fivethirtyeight() +
+  labs(title = "Southwest's Delays Are Shorts; United Are Long",
+              subtitle = "As shared of scheduled flights, 2014")
+
+delay_gather 
+
+```
