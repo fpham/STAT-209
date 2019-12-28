@@ -1,0 +1,69 @@
+---
+title: "Project 2 Draft - Barnaby"
+author: "Barnaby Woods"
+date: "8/11/2019"
+output: html_document
+---
+
+Wealth inequality is a rampant force both domestically in the US and across the globe: the most affluent members of society often hold much much more than their fair share of wealth and as a result those who are not as well off suffer. Using datasets from Gapminder, we aim to look at the reasons why wealth inequality exists and connect the economic health of a country to the distribution of wealth. Specifically, examining the GDP per capita of a country can help us to understand the economic state of said country: we will start off by examining the connection between GDP and wealth inequality on a global scale and zoom in to look more specifically at the ways these issues affect the US specifically.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggthemes)
+
+poorest <- read_csv("income_share_of_poorest_20percent.csv")
+
+richest <- read_csv("income_share_of_richest_20percent.csv")
+
+GDPpercapita <- read_csv("gdppercapita_us_inflation_adjusted.csv")
+```
+
+```{r, message=FALSE, echo=FALSE}
+
+Barnabyfunction <- function(datasets, value1) #create a custom function
+{
+
+datasets %>% gather( # Convert "wide" to "long"
+    key = "year",
+    value = !!value1, # make this a variable to be used with dyplr!
+    -country
+
+  ) %>% drop_na(!!value1) %>% mutate( 
+    year = as.numeric(year))
+    # change is.na() to drop.na() to be used with dyplr and year to dbl value
+
+}
+
+poorest <- poorest %>% Barnabyfunction(value1 = "poor_20_percent") 
+
+richest <- richest %>% Barnabyfunction(value1 = "rich_20_percent")
+
+GDP <- GDPpercapita %>% Barnabyfunction(value1 = "GDP_per_capita")
+
+RichAndPoor <-
+   richest %>%
+   inner_join(poorest, by=c("country","year")) %>%
+  mutate(ratio = rich_20_percent / poor_20_percent)
+
+RichAndPoor$year<-as.numeric(RichAndPoor$year)
+
+GDPandwealth <-
+   GDP %>%
+   inner_join(RichAndPoor, by=c("country","year")) %>%
+  filter(year == 2015)
+
+GDPplot <- GDPandwealth %>% 
+  ggplot(aes(x = ratio, y = GDP_per_capita)) + 
+  geom_point() + 
+  theme_economist() + 
+  xlab("Ratio of % wealth of richest 20% to poorest 20%") + 
+  ylab("GDP per capita") + 
+  ggtitle("Comparing GDP per capita to wealth distribution")
+
+GDPplot
+```
+
+In this graph, each point represents an individual country. These data show a seem to convey a subtle trend - the countries with the highest wealth inequality (above 10%) tend to have lower GDP per capita in general than those with lower wealth inequality. On the flipside, countries with higher GDP per capita tend to stay on the lower end of the wealth ratio. Why would this be the case? To use a specific country as an example, Namibia is the point on the graph with the highest ratio; Namibia is home to over 3000 millionaires while the GDP per capita stands below $5000. Given that much of the population is extremely impoverished while there are a select few thousand individuals with a lot of money, it makes sense that the rich own most of the wealth of the country while the GDP is still extremely low as most of the population has very little. On the other end, the country with the highest GDP per capita on the graph is Luxembourg. Luxembourg is an extremely economically productive country with an incredibly high average household income. Because of this, the GDP per capita is high and the wealth inequality is generally on the lower end (although it is not as low as the country with the second highest GDP per capita, Denmark). It seems that in many (although not all) cases, wealth inequality and GDP are inextricably linked as the wealthy in poorer countries hold much of the country's money.
+

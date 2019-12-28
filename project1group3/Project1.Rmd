@@ -1,0 +1,79 @@
+---
+title: "Project1"
+author: "Clare Stevens"
+date: "9/26/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+Avocados <- read_csv("avocado.csv")
+glimpse(Avocados)
+```
+```{r}
+plot1 <- ggplot(Avocados, aes(y=AveragePrice, x=Date)) + geom_line()  
+plot1 + facet_wrap(~type)
+plot2 <- ggplot(Avocados, aes(x=Date, y=`Total Volume`)) + geom_line()
+plot2
+view(Avocados)
+```
+```{r}
+AvocadosNE <- Avocados %>% filter(region==c("Albany", "BaltimoreWashington", "Boston", "BuffaloRochester", "HarrisburgScranton", "HartfordSpringfield", "NewYork", "Northeast", "NorthernNewEngland", "Philadelphia", "Pittsburgh", "Syracuse"))
+
+ggplot(AvocadosNE, aes(x=Date, y=AveragePrice)) + geom_point()
+```
+```{r}
+AvocadosS <- Avocados %>% filter(region==c("Atlanta", "Charlotte", "DallasFtWorth", "Houston", "Jacksonville", "Louisville", "MiamiFtLauderdale", "MidSouth", "Nashville", "NewOrleansMobile", "Orlando", "PhoenixTucson", "RaleighGreensboro", "RichmondNorfolk", "Roanoke", "SouthCarolina", "SouthCentral", "Southeast", "Tampa"))
+ggplot(AvocadosS, aes(x=Date, y=AveragePrice)) + geom_point()
+```
+
+```{r}
+library(ggthemes)
+AvocadosW <- Avocados %>% filter(region==c("Boise", "California", "Denver", "LasVegas", "LosAngeles", "Portland", "Sacramento", "SanDiego", "SanFrancisco", "Seattle", "Spokane"), )
+ggplot(Avocados, aes(x=type, y=AveragePrice, )) + geom_boxplot()  + theme_economist() + scale_fill_economist()
+```
+
+```{r}
+ggplot(AvocadosW, aes(x=Date, y=AveragePrice)) + geom_line()  + facet_wrap(~region) + theme_economist() + scale_fill_economist()
+```
+
+```{r}
+ggplot(AvocadosS, aes(x=Date, y=AveragePrice)) + geom_line() + facet_wrap(~region) + theme_economist() + scale_fill_economist()
+```
+
+```{r}
+Avocado <- read_csv("avocado.csv")
+NE.name <- c("Albany", "BaltimoreWashington", "Boston", "BuffaloRochester", "HarrisburgScranton", "HartfordSpringfield", "NewYork", "Northeast", "NorthernNewEngland", "Philadelphia", "Pittsburgh", "Syracuse")
+
+MW.name <- c("Chicago", "CincinnatiDayton", "Columbus", "Detroit", "GrandRapids", "GreatLakes", "Indianapolis", "Plains", "StLouis") 
+
+S.name <- c("Atlanta", "Charlotte", "DallasFtWorth", "Houston", "Jacksonville", "Louisville", "MiamiFtLauderdale", "Midsouth", "Nashville", "NewOrleansMobile", "Orlando", "PhoenixTucson", "RaleighGreensboro", "RichmondNorfolk", "Roanoke", "SouthCarolina", "SouthCentral", "Southeast", "Tampa")
+
+W.name <- c("Boise", "California", "Denver", "LasVegas", "LosAngeles", "Portland", "Sacramento", "SanDiego", "SanFrancisco", "Seattle", "Spokane", "WestTexNewMexico", "West")
+
+Total.name <- c("TotalUS")
+
+region.list <- list(
+  Northeast=NE.name,
+  Midwest=MW.name,
+  South=S.name,
+  West=W.name,
+  TotalUS=Total.name)
+
+Avocado$USRegion <- lapply(Avocado$region, 
+                 function(x) names(region.list)[grep(x,region.list)])
+
+Avocado$USRegion2 <- unlist(Avocado$USRegion)
+
+names(Avocado) <- c("X1", "Date", "AveragePrice", "TotalVolume", "4046", "4225", "4770", "TotalBags", "SmallBags", "LargeBags", "XLargeBags", "type", "year", "region", "Month", "USRegion")
+
+ggplot(Avocado, aes(x=Date, y=TotalVolume)) + geom_line()  + theme_economist() + scale_fill_economist()
+```
+```{r}
+ggplot(Avocados, aes(x=Month, y=TotalVolume)) + geom_line() 
+```
+

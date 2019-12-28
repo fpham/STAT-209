@@ -1,0 +1,115 @@
+---
+title: "A Buyer's Guide to Avocados"
+author: "Rachel Witt, Clare Stevens, and Felix Pham"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggthemes)
+Avocado <- read_csv("avocado.csv")
+```
+
+
+```{r define_variables, include=FALSE}
+Avocado$Month <- format(Avocado$Date, '%B') #create new variabe, month, in Avocado dataset
+Avocado$Month <- factor(Avocado$Month,levels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")) #rearrange Month variable
+
+#Create new variable, US Region, to group the regions given in the dataset in a more recognizable way
+
+NE.name <- c("Albany", "BaltimoreWashington", "Boston", "BuffaloRochester", "HarrisburgScranton", "HartfordSpringfield", "NewYork", "Northeast", "NorthernNewEngland", "Philadelphia", "Pittsburgh", "Syracuse")
+
+MW.name <- c("Chicago", "CincinnatiDayton", "Columbus", "Detroit", "GrandRapids", "GreatLakes", "Indianapolis", "Plains", "StLouis") 
+
+S.name <- c("Atlanta", "Charlotte", "DallasFtWorth", "Houston", "Jacksonville", "Louisville", "MiamiFtLauderdale", "Midsouth", "Nashville", "NewOrleansMobile", "Orlando", "PhoenixTucson", "RaleighGreensboro", "RichmondNorfolk", "Roanoke", "SouthCarolina", "SouthCentral", "Southeast", "Tampa")
+
+W.name <- c("Boise", "California", "Denver", "LasVegas", "LosAngeles", "Portland", "Sacramento", "SanDiego", "SanFrancisco", "Seattle", "Spokane", "WestTexNewMexico", "West")
+
+Total.name <- c("TotalUS")
+
+region.list <- list(
+  Northeast=NE.name,
+  Midwest=MW.name,
+  South=S.name,
+  West=W.name,
+  TotalUS=Total.name)
+
+Avocado$USRegion <- lapply(Avocado$region, 
+                 function(x) names(region.list)[grep(x,region.list)])
+
+Avocado$USRegion2 <- unlist(Avocado$USRegion) #create vector form of USRegion variable
+
+#rename variables so there are no spaces
+names(Avocado) <- c("X1", "Date", "AveragePrice", "TotalVolume", "4046", "4225", "4770", "TotalBags", "SmallBags", "LargeBags", "XLargeBags", "type", "year", "region", "Month", "USRegion", "USRegion2")
+```
+
+Who doesn’t love avocados? With images of toast topped with avocado flowers floating around Instagram and avocado dedicated restaurants popping up worldwide, it seems as though there isn’t a single person who isn’t infatuated with this creamy green fruit. But where you live and when you buy avocados has a significant effect on how much of your budget you have to sacrifice to buy them. The Hass Avocado Board recently published avocado retail data from 2015 to 2018 that sheds some light on how and why avocado prices seem to be changing all the time. The data has been aggregated from avocado retail sales across the country in grocery stores, drug stores, bulk outlets, and the military. It shows the per-unit price of avocados, volume of avocados sold, and sales data by region. Combined, the data provides an accurate picture of avocado sales across the US and can help you make informed decisions about how to balance your budget and your love for avocados.
+
+
+If you are a frequent avocado buyer, you may have noticed that avocado prices fluctuate throughout the year. Figure 1 shows monthly price fluctuations per avocado based on region. 
+
+#### Figure 1: Monthly Avocado Prices by Region
+```{r, echo=FALSE, message=FALSE}
+#month vs average price geom smooth, grouped regionally with dotted mean line
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=AveragePrice, group=USRegion2, color=USRegion2)) +
+  geom_smooth(se=FALSE) + 
+  theme(plot.title=element_text(hjust=0.5),axis.text.x = element_text(angle = 90)) +
+  ylab("Average Price ($)") + 
+  ggtitle("Monthly Avocado Prices by Region") + 
+  scale_color_discrete(name="Region") +
+  stat_summary(aes(y=AveragePrice, group=1, color="Total US"), fun.y=mean, geom="line", group=1, linetype="dashed", color="black") + theme_economist() + theme(axis.text.x=element_text(angle=90)) + 
+  annotate("text", x=4.8, y=1.5, label="US Average") + geom_curve(x=4, xend=3, y=1.5, yend=1.35, color="black",  arrow=arrow(length=unit(0.3, "cm")), curvature=0.5) + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+
+Throughout most of the US, avocado prices are lowest in the winter months and then rise by about 30% over the course of the year before peaking sometime between September and October. However, this trend is only consistent for the Midwest, South, and West, with the West showing the steepest increase in avocado prices between the winter and fall months. Avocado prices in the Northeast show a completely different trend throughout the year. Avocado prices in the Northeast are overall higher than in any other area of the US and show very little seasonal fluctuation compared to other regions. This may be because avocados have to travel the furthest to reach the Northeast from where they are grown. The good news is that if you live in the Northeast, you can consistently budget for avocados. But the bad news is that you’ll be budgeting more than you would if you lived anywhere else in the US.
+
+The takeaway: Save money by buying most of your avocados between January and May. If you’re an avocado fanatic living in the Northeast, you might want to think about relocating to somewhere closer to the source.
+
+
+Now you know how avocado prices change seasonally where you live. But how have avocado purchases changed over the years? Figure 2 shows the total avocados sold over time, by region.
+
+#### Figure 2: Year-round Avocado Purchasing Trends by US Region
+```{r, echo=FALSE, message=FALSE}
+
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Date, y=TotalVolume, group=USRegion2, color=USRegion2)) +
+  geom_smooth(se=FALSE) + 
+  theme(plot.title=element_text(hjust=0.5),axis.text.x = element_text(angle = 90)) +
+  scale_y_continuous(breaks=seq(0,800000,200000),labels=scales::comma) + 
+  ylab("Total Avocados Purchased") + 
+  ggtitle("Year-round Avocado Purchasing Trends by US Region") + 
+  scale_color_discrete(name="US Region") + theme_economist() + 
+  stat_summary(aes(y=TotalVolume, group=1, color="Total US"), fun.y=mean, geom="line", group=1, linetype="dashed", color="black") + theme(plot.title = element_text(hjust = 0.5)) +
+  annotate(geom="text", x=as.Date("2015-08-24"), y=850000, label = "US Average") +
+  geom_curve(x=as.Date("2015-09-12"), xend=as.Date("2016-01-15"), y=830000, yend=650000, color="black", arrow=arrow(length=unit(0.3,"cm")), curvature=0.5)
+```
+
+While there was a slight increase in avocado consumption after 2015, the volume of avocados purchased has remained mostly stable between 2015 and 2018 with a consistent seasonal trend. Given the seasonal fluctuation of avocado prices shown in Figure 1, it makes sense that avocado consumption would also decrease during the times when avocados are the highest priced. Once again, the Northeast is an exception to the pattern. Avocado consumption in the Northeast has remained consistently the lowest with none of the fluctuation in avocados purchased seen in other areas of the US. The higher and more consistent price of avocados in the Northeast may have led to their consistently lower consumption. People living in the West purchased more avocados than in any other area of the US, potentially because avocados are grown in the West which provides easier access for people living there.
+
+Many people who love avocados are also committed to living a healthy lifestyle and try to avoid pesticides whenever possible. If you tend to buy organic, you might be interested in the price differences between conventional and organic avocados that is shown in Figure 3.
+
+#### Figure 3: Seasonal Price Differences by Avocado Type (Conventional vs Organic Avocados)
+```{r, echo=FALSE, message=FALSE}
+#boxplot of price by type
+ggplot(filter(Avocado, USRegion2=="TotalUS"), aes(x=Month, y=AveragePrice, color=type)) + geom_boxplot() + facet_wrap(~USRegion2) + theme_economist() + scale_fill_economist() + theme(axis.text.x = element_text(angle = 90)) + ggtitle("Seasonal Price Differences by Avocado Type") + labs(y="Average Price ($)") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+Unfortunately, organic avocados are consistently more expensive than their conventionally grown counterparts. As demonstrated by the price trends in Figure 1, prices of both conventional and organic avocados start to increase around July and peak in the fall. Luckily, avocados are ranked number one on the [Clean Fifteen](https://www.healthline.com/nutrition/clean-15#section1), an annual list put out by the Environmental Working Group (EWG) which ranks produce according to their pesticide content. Less than 1% of avocados tested positive for pesticide residue so you can feel confident in your avocado consumption even if you don’t want to pay a premium for organic avocados.
+
+Final guidelines on where and when to buy your avocados: If you live anywhere in the US other than the Northeast, consider buying your avocados in the winter as that is when prices are generally lowest. People who live in the Northeast may be out of luck though as avocado prices are higher there than in the rest of the US throughout the whole year. And wherever you live, you'll get the best deals on conventional avocados. 
+
+## Discussion
+
+The Hass Avocado Board data allows us to see some major factors affecting avocado prices: region, season, and avocado type. The cheapest possible avocados are available in January or February in the West. But no matter where you live, avocados are cheapest in the winter months and it looks like people know that -- avocado sales rise in the winter, right when prices are at their lowest. 
+
+The data wasn't as comprehensive as would have been ideal. For example, had the data spanned more years, more patterns in prices and sales could have been visualized. In addition, sales data for each region was uneven, and included a small sample of all cities in a region. Because the sample wasn't entirely representative of each region, we are not certain that the trends represented in the data are absolutely accurate.
+
+While the data allowed us to visualize the short-term avocado price and volume fluctuations, its limitations didn't allow us to answer the question we wanted to answer: how have avocado prices changed over the long-term of the last 20 or 30 years? Had the data gone back further, we might have been able to analyze the effect of major events like the passage of NAFTA through the lens of avocados, which are mostly imported. For us to accurately analyze this question, the data would have also had to be more comprehensive, covering at least half of major cities in the US.
+
+
+## Methodology
+
+To make trends over time easiest to perceive, line graphs were chosen for Figures 1 and 2. Color schemes were kept consistent over the first two figures to make it as easy as possible to connect the trends for each region from the information conveyed in each figure (for example, to make it easy to make conclusions about price and sales trends in the west). Black dashed lines representing the US average were added to Figures 1 & 2 to enable more comparison between regions. A layered box plot was chosen in Figure 3 to convey the variation in price of each type over months. A new color scheme was chosen because the grouping was different for the last graph. 

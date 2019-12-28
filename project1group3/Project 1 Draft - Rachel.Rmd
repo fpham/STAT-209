@@ -1,0 +1,77 @@
+---
+title: "Project 1 Draft - Rachel"
+author: "Rachel Witt"
+date: "10/3/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggthemes)
+Avocado <- read_csv("avocado.csv")
+```
+
+```{r define_variables, include=FALSE}
+Avocado$Month <- format(Avocado$Date, '%B') #create new variabe, month, in Avocado dataset
+Avocado$Month <- factor(Avocado$Month,levels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")) #rearrange Month variable
+
+#Create new variable, US Region, to group the regions given in the dataset in a more recognizable way
+
+NE.name <- c("Albany", "BaltimoreWashington", "Boston", "BuffaloRochester", "HarrisburgScranton", "HartfordSpringfield", "NewYork", "Northeast", "NorthernNewEngland", "Philadelphia", "Pittsburgh", "Syracuse")
+
+MW.name <- c("Chicago", "CincinnatiDayton", "Columbus", "Detroit", "GrandRapids", "GreatLakes", "Indianapolis", "Plains", "StLouis") 
+
+S.name <- c("Atlanta", "Charlotte", "DallasFtWorth", "Houston", "Jacksonville", "Louisville", "MiamiFtLauderdale", "Midsouth", "Nashville", "NewOrleansMobile", "Orlando", "PhoenixTucson", "RaleighGreensboro", "RichmondNorfolk", "Roanoke", "SouthCarolina", "SouthCentral", "Southeast", "Tampa")
+
+W.name <- c("Boise", "California", "Denver", "LasVegas", "LosAngeles", "Portland", "Sacramento", "SanDiego", "SanFrancisco", "Seattle", "Spokane", "WestTexNewMexico", "West")
+
+Total.name <- c("TotalUS")
+
+region.list <- list(
+  Northeast=NE.name,
+  Midwest=MW.name,
+  South=S.name,
+  West=W.name,
+  TotalUS=Total.name)
+
+Avocado$USRegion <- lapply(Avocado$region, 
+                 function(x) names(region.list)[grep(x,region.list)])
+
+Avocado$USRegion2 <- unlist(Avocado$USRegion) #create vector form of USRegion variable
+
+#rename variables so there are no spaces
+names(Avocado) <- c("X1", "Date", "AveragePrice", "TotalVolume", "4046", "4225", "4770", "TotalBags", "SmallBags", "LargeBags", "XLargeBags", "type", "year", "region", "Month", "USRegion", "USRegion2")
+```
+Who doesn’t love avocados? With the images of toast topped with avocado flowers floating around Instagram and avocado dedicated restaurants popping up worldwide, it seems as though there isn’t a single person who isn’t infatuated with this creamy green fruit. And, honestly, why wouldn’t they be? Their creamy texture and mild flavor give them the versatility to be used in just about any dish. From savory to sweet, from avocado toast to avocado muffins or ice cream, there isn’t anywhere that avocados don’t belong. And as if that weren’t enough, thanks to their minerals and healthy fats, avocados are often touted as a superfood (https://www.cookinglight.com/news/best-superfoods-for-health), one of the healthiest foods out there. So you can feel good no matter how or when you enjoy your avocado. But eating too may of these tasty fruits isn’t always good for the pocket book. So with data collected about avocado purchases over four years, from 2015 through 2018, we analyzed how and where the avocado craze hit the US in order to provide practical information to allow you to make informed decisions when purchasing avocados so you can enjoy the superfood without worrying about breaking the bank. 
+```{r, echo=FALSE, message=FALSE}
+#month vs average price geom smooth, grouped regionally with dotted mean line
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=AveragePrice, group=USRegion2, color=USRegion2)) +
+  geom_smooth() + 
+  theme(plot.title=element_text(hjust=0.5),axis.text.x = element_text(angle = 90)) +
+  ylab("Average Price (in dollars)") + 
+  ggtitle("Year-round Avocado Price Trends by US Region") + 
+  scale_color_discrete(name="US Region") +
+  stat_summary(aes(y=AveragePrice, group=1, color="Total US"), fun.y=mean, geom="line", group=1, linetype="dashed")
+```
+
+Avocados can only grow in three states in the US: California, Hawaii, and Florida (https://www.hunker.com/12003820/in-what-areas-of-the-united-states-can-you-grow-an-avocado-tree) which may explain the higher avocado consumption in the South and West. 
+
+```{r, echo=FALSE, message=FALSE}
+#month vs total volume geom smooth, grouped regionally
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=TotalVolume, group=USRegion2, color=USRegion2)) +
+  geom_smooth() + 
+  theme(plot.title=element_text(hjust=0.5),axis.text.x = element_text(angle = 90)) +
+  scale_y_continuous(breaks=seq(0,800000,200000),labels=scales::comma) + 
+  ylab("Total Avocados Purchased") + 
+  ggtitle("Year-round Avocado Purchasing Trends by US Region") + 
+  scale_color_discrete(name="US Region") 
+```
+In most US regions, avocado prices fluctuate seasonally with the lowest prices in the winter and the highest prices in the fall. However, prices in the Northeast remain fairly stable throughout the year compared to the rest of the US though there is still an uptick in prices during the spring and summer. So if you live in the Northeast, you can feel confident knowing there isn’t much variation in avocado prices around you but if you’re visiting another region in the winter, you might want to grab some avocados while you’re there and enjoy the lower prices. If you live in any other area of the US, you should consider carefully selecting the times when you enjoy your avocado toast. In all other regions, prices were lowest in the winter and highest in September. Avocado prices in the Midwest and the South were fairly similar to one another, experiencing a price low in February with a similar increasing trend until peak prices hit in September. While avocado prices in the West follow a similar trend, they increase to higher prices than any other region in September and then prices fall to comparable levels with the South and Midwest. 
+
+```{r, echo=FALSE, message=FALSE}
+#boxplot of price by type
+ggplot(filter(Avocado, USRegion2=="TotalUS"), aes(x=Month, y=AveragePrice, color=type)) + geom_boxplot() + facet_wrap(~USRegion2) + theme_economist() + scale_fill_economist() + theme(axis.text.x = element_text(angle = 90))
+```
+
+As anyone who’s been to the grocery store lately would expect, organic avocados were consistently priced higher than those grown conventionally. Sometimes during late summer and early fall, organic avocado prices feel to levels comparable to conventionally grown avocados. But overall, you should plan for organic avocados to be significantly more expensive than their pesticide free counterparts. Luckily, avocados are ranked number one on the Clean Fifteen, an annual list put out by the  Environmental Working Group (EWG) which ranks produce according to their pesticide content (https://www.healthline.com/nutrition/clean-15#section1). Less than 1% of avocados tested positive for pesticide residue so you can feel confident in your avocado consumption even if you don’t want to pay a premium for organic avocados.

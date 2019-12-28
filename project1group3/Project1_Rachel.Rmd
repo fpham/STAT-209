@@ -1,0 +1,215 @@
+---
+title: "Project 1 Rachel"
+author: "Rachel Witt"
+date: "9/26/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+#setup: read in avocado ddataset, define Month as variable
+library(tidyverse)
+Avocado <- read_csv("avocado.csv")
+view(Avocado)
+unique(Avocado$region)
+Avocado$Month <- format(Avocado$Date, '%B') #create new variabe, month, in Avocado dataset
+Avocado$Month <- factor(Avocado$Month,levels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")) #rearrange Month variable
+library(ggthemes)
+```
+
+
+```{r, include=FALSE}
+#Create new variable, US Region, to group the regions given in the dataset in a more recognizable way
+
+NE.name <- c("Albany", "BaltimoreWashington", "Boston", "BuffaloRochester", "HarrisburgScranton", "HartfordSpringfield", "NewYork", "Northeast", "NorthernNewEngland", "Philadelphia", "Pittsburgh", "Syracuse")
+
+MW.name <- c("Chicago", "CincinnatiDayton", "Columbus", "Detroit", "GrandRapids", "GreatLakes", "Indianapolis", "Plains", "StLouis") 
+
+S.name <- c("Atlanta", "Charlotte", "DallasFtWorth", "Houston", "Jacksonville", "Louisville", "MiamiFtLauderdale", "Midsouth", "Nashville", "NewOrleansMobile", "Orlando", "PhoenixTucson", "RaleighGreensboro", "RichmondNorfolk", "Roanoke", "SouthCarolina", "SouthCentral", "Southeast", "Tampa")
+
+W.name <- c("Boise", "California", "Denver", "LasVegas", "LosAngeles", "Portland", "Sacramento", "SanDiego", "SanFrancisco", "Seattle", "Spokane", "WestTexNewMexico", "West")
+
+Total.name <- c("TotalUS")
+
+region.list <- list(
+  Northeast=NE.name,
+  Midwest=MW.name,
+  South=S.name,
+  West=W.name,
+  TotalUS=Total.name)
+
+Avocado$USRegion <- lapply(Avocado$region, 
+                 function(x) names(region.list)[grep(x,region.list)])
+
+Avocado$USRegion2 <- unlist(Avocado$USRegion)
+```
+
+```{r, echo=FALSE}
+#clustered bar chart of bag numbers by type
+names(Avocado) <- c("X1", "Date", "AveragePrice", "TotalVolume", "4046", "4225", "4770", "TotalBags", "SmallBags", "LargeBags", "XLargeBags", "type", "year", "region", "Month", "USRegion", "USRegion2")
+
+Avocado2 <- Avocado %>% gather(key="bag_size", value="bags_number", "SmallBags", "LargeBags", "XLargeBags")
+
+ggplot(Avocado2, aes(fill=bag_size, y=bags_number, x=type)) + 
+    geom_bar(position="dodge", stat="identity")
+```
+
+
+```{r}
+ggplot(Avocado, aes(x=USRegion2, y=TotalVolume))+geom_bar(position="dodge", stat="identity")
+```
+
+
+```{r}
+library(ggthemes)
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Date, y=TotalVolume)) + geom_line() + facet_grid(~USRegion2) + theme_economist() + scale_fill_economist() #total volume by region
+
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Date, y=AveragePrice)) + geom_line() + facet_grid(~USRegion2) + theme_economist() + scale_fill_economist() #average price by region
+
+ggplot(Avocado, aes(x=Month, y=TotalVolume))+geom_bar(position="dodge", stat="identity") #avocado consumption by month
+
+Avocado$Month <- factor(Avocado$Month,levels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"))
+
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=TotalVolume, fill=Month))+geom_bar(position="dodge", stat="identity") + facet_grid(~USRegion2) + theme(axis.text.x = element_text(angle = 90))
+
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=AveragePrice, fill=Month))+geom_bar(position="dodge", stat="identity") + facet_grid(~USRegion2) + theme(axis.text.x = element_text(angle = 90))
+
+ggplot(filter(Avocado, USRegion2=="TotalUS"), aes(x=Month, y=AveragePrice, fill=Month))+geom_bar(position="dodge", stat="identity") + facet_grid(~USRegion2) + theme(axis.text.x = element_text(angle = 90))
+
+ggplot(filter(Avocado, USRegion2=="TotalUS"), aes(x=Month, y=TotalVolume, fill=Month))+geom_bar(position="dodge", stat="identity") + facet_grid(~USRegion2) + theme(axis.text.x = element_text(angle = 90))
+```
+
+
+
+```{r}
+ggplot(Avocado, aes(x=Date, y=AveragePrice, color=type))+geom_line() +facet_wrap(~USRegion2)
+
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=USRegion2, y=TotalVolume))+geom_boxplot()
+```
+
+
+```{r}
+filteredAvocado <- filter(Avocado, region %in% c("NewYork", "MiamiFtLauderdale", "Chicago", "SanFrancisco"))
+ggplot(filteredAvocado, aes(x=region, y=TotalVolume))+geom_boxplot()
+ggplot(filteredAvocado, aes(x=region, y=AveragePrice, color=Date))+geom_boxplot()
+ggplot(filteredAvocado, aes(x=region, y=TotalBags, color=Date))+geom_boxplot()
+ggplot(Avocado, aes(x=year, y=TotalVolume, group=type, color=type))+geom_point()
+ggplot(Avocado, aes(x=year, y=AveragePrice, group=type, color=type))+geom_point()
+ggplot(Avocado, aes(fill=type, y=AveragePrice, x=year)) + 
+    geom_bar(position="dodge", stat="identity")
+ggplot(Avocado, aes(fill=type, y=TotalVolume, x=year)) + 
+    geom_bar(position="dodge", stat="identity")
+
+
+```
+
+
+```{r}
+ggplot(filter(Avocado, USRegion2=="TotalUS"), aes(x=Month, y=AveragePrice, color=type)) + geom_boxplot() + facet_wrap(~USRegion2) + theme_economist() + scale_fill_economist() + theme(axis.text.x = element_text(angle = 90))
+
+ggplot(filter(Avocado, USRegion2=="TotalUS"), aes(x=Month, y=TotalVolume, color=type)) + geom_boxplot() + facet_wrap(~USRegion2) + theme_economist() + scale_fill_economist() + theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+#plots I used for the powerpoint
+
+#month vs total volume, faceted regionally
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=TotalVolume, fill=Month))+geom_bar(position="dodge", stat="identity") + facet_grid(~USRegion2) + theme(axis.text.x = element_text(angle = 90))
+
+#month vs average price, faceted regionally
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=AveragePrice, fill=Month))+geom_bar(position="dodge", stat="identity") + facet_grid(~USRegion2) + theme(axis.text.x = element_text(angle = 90))
+
+#month vs average price for the total US
+ggplot(Avocado, aes(x=, y=AveragePrice, color=USRegion2))+geom_line(position="dodge", stat="identity")  + theme(axis.text.x = element_text(angle = 90))
+
+#boxplot of price by type
+ggplot(filter(Avocado, USRegion2=="TotalUS"), aes(x=Month, y=AveragePrice, color=type)) + geom_boxplot() + facet_wrap(~USRegion2) + theme_economist() + scale_fill_economist() + theme(axis.text.x = element_text(angle = 90))
+```
+```{r}
+Avocado <- Avocado %>% filter(USRegion2 == c("West", "Northeast", "South", "Midwest"))
+```
+
+
+```{r}
+library(tidyverse)
+library(ggthemes)
+ggplot(Avocado, aes(x=Date, y=AveragePrice, color=USRegion2)) + geom_smooth() + theme_economist() + scale_fill_economist() + labs(y="Average Price ($)", title="The Price of An Avocado by Region")
+```
+
+
+```{r}
+#experimenting with changing the plots: month vs total volume
+
+#month vs total volume, faceted regionally
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=TotalVolume, group=USRegion2, color=USRegion2)) +
+  geom_smooth() + 
+  theme(plot.title=element_text(hjust=0.5),axis.text.x = element_text(angle = 90)) +
+  scale_y_continuous(breaks=seq(0,800000,200000),labels=scales::comma) + 
+  ylab("Total Avocados Purchased") + 
+  ggtitle("Year-round Avocado Purchasing Trends by US Region") + 
+  scale_color_discrete(name="US Region") 
+
+
+```
+
+```{r}
+#experimenting with changing the plots: month vs average price
+
+#month vs average price, faceted regionally
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=AveragePrice, group=USRegion2, color=USRegion2)) +
+  geom_smooth() + 
+  theme(plot.title=element_text(hjust=0.5),axis.text.x = element_text(angle = 90)) +
+  ylab("Average Price (in dollars)") + 
+  ggtitle("Year-round Avocado Price Trends by US Region") + 
+  scale_color_discrete(name="US Region") 
+
+
+#experimenting with changing the plots: month vs average price
+
+#month vs average price, faceted regionally with dotted mean line
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=AveragePrice, group=USRegion2, color=USRegion2)) +
+  geom_smooth() + 
+  theme(plot.title=element_text(hjust=0.5),axis.text.x = element_text(angle = 90)) +
+  ylab("Average Price (in dollars)") + 
+  ggtitle("Year-round Avocado Price Trends by US Region") + 
+  scale_color_discrete(name="US Region") +
+  stat_summary(aes(y=AveragePrice, group=1, color="Total US"), fun.y=mean, geom="line", group=1, linetype="dashed")
+```
+
+```{r}
+totalUSdata<- filter(Avocado, USRegion2=="TotalUS")
+gd<- totalUSdata%>%
+  group_by(Month) %>%
+  summarise(AveragePrice=mean(AveragePrice))
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=AveragePrice, fill=Month))+geom_bar(position="dodge", stat="average") + facet_grid(~USRegion2) + theme(axis.text.x = element_text(angle = 90)) + geom_line(data=gd, aes(x=Month, y=AveragePrice))
+  
+#stat_summary(aes(group=1), geom="line", fun.y=mean)
+```
+```{r}
+#updated plots
+
+#month vs average price, faceted regionally with dotted mean line
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=AveragePrice, group=USRegion2, color=USRegion2)) +
+  geom_smooth() + 
+  theme(plot.title=element_text(hjust=0.5),axis.text.x = element_text(angle = 90)) +
+  ylab("Average Price (in dollars)") + 
+  ggtitle("Year-round Avocado Price Trends by US Region") + 
+  scale_color_discrete(name="US Region") +
+  stat_summary(aes(y=AveragePrice, group=1, color="Total US"), fun.y=mean, geom="line", group=1, linetype="dashed")
+
+#month vs total volume, faceted regionally
+ggplot(filter(Avocado, USRegion2!="TotalUS"), aes(x=Month, y=TotalVolume, group=USRegion2, color=USRegion2)) +
+  geom_smooth() + 
+  theme(plot.title=element_text(hjust=0.5),axis.text.x = element_text(angle = 90)) +
+  scale_y_continuous(breaks=seq(0,800000,200000),labels=scales::comma) + 
+  ylab("Total Avocados Purchased") + 
+  ggtitle("Year-round Avocado Purchasing Trends by US Region") + 
+  scale_color_discrete(name="US Region") 
+
+#boxplot of price by type
+ggplot(filter(Avocado, USRegion2=="TotalUS"), aes(x=Month, y=AveragePrice, color=type)) + geom_boxplot() + facet_wrap(~USRegion2) + theme_economist() + scale_fill_economist() + theme(axis.text.x = element_text(angle = 90))
+```
+

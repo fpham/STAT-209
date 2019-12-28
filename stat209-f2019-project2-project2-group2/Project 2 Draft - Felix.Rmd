@@ -1,0 +1,251 @@
+---
+title: "Project 2 Draft - Felix"
+author: "Felix Pham"
+date: "8/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggthemes)
+
+poorest <- read_csv("income_share_of_poorest_20percent.csv")
+
+second_poorest <- read_csv("income_share_of_2nd_poorest_20percent.csv")
+
+second_richest <- read_csv("income_share_of_2nd_richest_20percent.csv")
+
+middle <- read_csv("income_share_of_middle_20percent.csv")
+
+richest <- read_csv("income_share_of_richest_20percent.csv")
+
+gini <- read_csv("inequality_index_gini.csv")
+```
+
+```{r, message=FALSE, echo = FALSE}
+
+# poorest <- poorest %>% filter(country == "United States") %>%
+#   gather(
+#     key = "year",
+#     value = "poor_20_percent",
+#     -country
+# 
+#   ) %>% filter(!is.na(poor_20_percent))
+# 
+# poorest$year<-as.numeric(poorest$year)
+# 
+# second_poorest <- second_poorest %>% filter(country == "United States")%>%
+#   gather(
+#     key = "year",
+#     value = "second_poor_20_percent",
+#     -country
+# 
+#   ) %>% filter(!is.na(second_poor_20_percent))
+# 
+# second_poorest$year<-as.numeric(second_poorest$year)
+# 
+# richest <- richest %>% filter(country == "United States")%>%
+#   gather(
+#     key = "year",
+#     value = "rich_20_percent",
+#     -country
+# 
+#   ) %>% filter(!is.na(rich_20_percent))
+# 
+# richest$year<-as.numeric(richest$year)
+# 
+# second_richest <- second_richest %>% filter(country == "United States")%>%
+#   gather(
+#     key = "year",
+#     value = "second_rich_20_percent",
+#     -country
+# 
+#   ) %>% filter(!is.na(second_rich_20_percent))
+# 
+# second_richest$year<-as.numeric(second_richest$year)
+# 
+# middle <- middle %>% filter(country == "United States")%>%
+#   gather(
+#     key = "year",
+#     value = "middle_20_percent",
+#     -country
+# 
+#   ) %>% filter(!is.na(middle_20_percent))
+# 
+# middle$year<-as.numeric(middle$year)
+# 
+# 
+# 
+# 
+# gini <- read_csv("inequality_index_gini.csv")
+# 
+# gini <- gini %>% filter(country == "United States")%>%
+#   gather(
+#     key = "year",
+#     value = "gini_index",
+#     -country) %>% filter(!is.na(gini_index))
+# 
+# gini$year<-as.numeric(gini$year)
+# 
+# head(gini)
+# 
+# gini %>%
+#   ggplot(aes(x = year, y = gini_index, color = country)) +
+#   geom_line()+
+#   scale_x_continuous(breaks=seq(1979,2016,5))
+# 
+# 
+# 
+# joined_via_inner <-
+#    richest %>%
+#   inner_join(poorest, by=c("country","year")) %>%
+#   inner_join(second_poorest, by=c("country","year")) %>%
+#   inner_join(second_richest, by=c("country","year")) %>%
+#   inner_join(middle, by=c("country","year")) %>%
+#   filter(year >= 1979) %>%
+#   gather(
+#     key = "Type",
+#     value = "Percentage(%)", 
+#     -country,
+#     -year
+# )
+#   # mutate(ratio = rich_20_percent / poor_20_percent)
+# 
+# head(joined_via_inner)
+# 
+# joined_via_inner %>%
+#   ggplot(aes(x=year, y=`Percentage(%)`, fill=Type)) +
+#   geom_area(colour="black", size=.2, alpha=.8) +
+#   # geom_point(size = 0.5)+
+# 
+#   # facet_wrap(~country, ncol = 10) +
+#   scale_x_continuous(breaks=seq(1979,2016,6)) +
+#   scale_y_continuous(labels = function(x) paste0(x, "%")) + # Add percent sign 
+#   theme_minimal() +
+#   # theme_classic() +
+#   ggtitle("Income Quantile Share")
+
+
+
+
+```
+```{r, message=FALSE, echo = FALSE}
+
+# datasets <- c("poorest", "second_poorest", "second_richest","richest","middle", "gini", "gdp_total")
+
+customfunction <- function(datasets, value1) #create a custom function
+{
+
+datasets <- datasets %>% filter((country == "United States"))
+
+datasets %>% gather( # Convert "wide" to "long"
+    key = "year",
+    value = !!value1, # make this a variable to be used with dyplr!
+    -country
+
+  ) %>% drop_na(!!value1) %>% mutate( 
+    year = as.numeric(year))
+    # change is.na() to drop.na() to be used with dyplr and year to dbl value
+
+}
+
+# lapply(datasets, customfunction) %>%
+# bind_rows()
+
+poorest <- poorest %>% customfunction(value1 = "Income share held by lowest 20%") 
+
+richest <- richest %>% customfunction(value1 = "Income share held by highest 20%")
+
+second_poorest <- second_poorest %>% customfunction(value1 = "Income share held by second 20%")
+  
+second_richest <- second_richest %>% customfunction(value1 = "Income share held by fourth 20%")
+
+middle <- middle %>% customfunction(value1 = "Income share held by third 20%")
+
+gini <- gini %>% customfunction(value1 = "gini_index")
+```
+#### Figure 3: 
+```{r fig1, fig.height = 10, fig.width = 18, message=FALSE, echo = FALSE}
+joined_via_inner <-
+   richest %>%
+  inner_join(poorest, by=c("country","year")) %>%
+  inner_join(second_poorest, by=c("country","year")) %>%
+  inner_join(second_richest, by=c("country","year")) %>%
+  inner_join(middle, by=c("country","year")) %>%
+  filter(year >= 1979) %>%
+  gather(
+    key = "Type",
+    value = "Percentage(%)",
+    -country,
+    -year
+) %>% mutate(Type = factor(Type, levels
+                 =c("Income share held by highest 20%","Income share held by fourth 20%","Income share held by third 20%", "Income share held by second 20%", "Income share held by lowest 20%")) # rearrange Type variable from highest to lowest
+)
+
+joined_via_inner %>%
+  ggplot(aes(x=year, y=`Percentage(%)`, fill=Type)) +
+  geom_area(colour="black", size=.2, alpha=.8) +
+  # geom_point(size = 0.5)+
+
+  # facet_wrap(~country, ncol = 10) +
+  scale_x_continuous(breaks=seq(1979,2016,6)) +
+  scale_y_continuous(breaks=seq(0,100,20), labels = function(x) paste0(x, "%")) + # Add percent sign
+  scale_fill_manual(
+    values = c("green4","seagreen1", "yellow", "brown3", "blue")) +
+  theme_economist()+
+  ggtitle("Income shares by quintile, United States") +
+  theme(plot.title = element_text(size = 50, face = "bold")) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+This chart shows, in the U.S, the evolution of shares of total income going to the richest 20% (and subsequent quintiles). 
+
+From the chart, we can see that in the US, income inequality has been on the rise in the last four decades, with incomes for the bottom 10% growing much slower than incomes for the top 10%. This is different to the experience of other OECD countries. The US is an exception when it comes to income inequality.
+
+Research shows that in the US the ‘ultra-rich’ are the group that has experienced the largest income growth in the recent period of growing income inequality. This is shown in the following chart. Each dot along the horizontal axis represents a different percentile in the income distribution, with the height marking the corresponding average level of income growth in the period 1980-2014 (after adjusting for inflation). Red and blue, respectively, show changes in incomes before and after taxes.
+
+
+As we can see, the poorest individuals in the US have seen no real income growth in the period 1980-2014; while at the very top, the ultra-rich have enjoyed an average annual growth of about 6%. Without taxes and transfers, those at the bottom have actually seen their incomes shrinking.
+
+Another striking fact is that the relationship is monotonically increasing: independently of where you are in the US income distribution, those who are richer have seen larger income growth. This doesn’t need to be the case. In fact, as Piketty and co-authors point out, in the US the relationship used to be monotonically decreasing: independently of where you were in the income distribution, those who were poorer used to enjoy larger income growth.
+
+
+
+
+## Methodology
+
+
+Global inequality of opportunity
+Living conditions are vastly unequal between different places in our world today. And they have also changed over time: in some places living conditions changed dramatically, in others more slowly.
+
+Our individual stories play out amidst these major global changes and inequalities and it is these circumstances that largely determine how healthy, wealthy, and educated each of us will be in our own lives.1 Yes, our own hard work and life choices matter. But as we will see in the data, these matter much less than the one big thing over which we have no control: where and when we are born. This single, utterly random, factor largely determines the conditions in which we live our lives.
+
+Today’s global inequality is the consequence of two centuries of unequal progress. Some places have seen dramatic improvements, while others have not. It is on us today to even the odds and give everyone – no matter where they are born – the chance of a good life. This is not only right, but, as we will see below, is also realistic. Our hope for giving the next generations the chance to live a good life lies in broad development that makes possible for everyone what is only attainable for few today.
+
+It strikes many people as inherently unfair that some people are able to enjoy healthy, wealthy, happy lives whilst others continue to live in ill-health, poverty and sorrow. For them it is the inequality in the outcomes of people’s lives that matters. For others it is the inequality in opportunity – the opportunity to achieve good outcomes – that is unfair. But the point of this text is to say that these two aspects of inequality are not separable. Tony Atkinson said it very clearly: “Inequality of outcome among today’s generation is the source of the unfair advantage received by the next generation. If we are concerned about equality of opportunity tomorrow, we need to be concerned about inequality of outcome today.”2
+
+The extent of global inequality – it is not who you are, but where you are
+Today’s global inequality of opportunity means that what matters most for your living conditions is the good or bad luck of your place of birth.
+
+The inequality between countries that I am focusing on in this text is not the only aspect that needs to be considered. Inequalities within countries and societies – regional differences, racial differences, gender differences, and inequalities across other dimensions – can also be large, and are all beyond any individual’s own control and unfair in the same way.
+
+This visualization shows the inequality in living conditions between the worst and best-off countries in the world today in a number of aspects:
+
+Health: 
+
+Education: 
+
+Income: If you look at average incomes and compare the richest country – 
+
+The inequality between different places in the world is much larger than the difference you can make on your own.
+
+When you are born in a poor place where every tenth child dies you will not be able to get the odds of your baby dying down to the average level of countries with the best child health.
+
+In a place where the average child can only expect 5 years of education it will be immensely harder for a child to obtain the level of education even the average child gets in the best-off places.
+
+The difference is even starker for incomes. In a place where GDP per capita is less than $1,000 and the majority lives in extreme poverty, the average incomes in a rich country are unattainable. In a text I am publishing soon I will be looking at the research that studies how much the place of birth matters for people’s material prosperity: The short answer is that where you live isn’t just more important than all your other characteristics, it’s more important than everything else put together.
+
+You cannot get healthy and wealthy on your own – Societies make progress, not individuals
+What is true for inequality across countries around the world today, is also true for change over time. What gives people the chance for a good life is when the entire society and economy around them changes for the better. This is what development and economic growth are about: transforming a place so that what was previously only attainable for the luckiest few comes into reach for most.

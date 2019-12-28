@@ -1,0 +1,57 @@
+---
+title: "project1"
+author: "Clare Stevens"
+date: "9/29/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+Avocado <- read_csv("avocado.csv")
+view(Avocado)
+unique(Avocado$region)
+Avocado$Month <- format(Avocado$Date, '%B')
+NE.name <- c("Albany", "BaltimoreWashington", "Boston", "BuffaloRochester", "HarrisburgScranton", "HartfordSpringfield", "NewYork", "Northeast", "NorthernNewEngland", "Philadelphia", "Pittsburgh", "Syracuse")
+
+MW.name <- c("Chicago", "CincinnatiDayton", "Columbus", "Detroit", "GrandRapids", "GreatLakes", "Indianapolis", "Plains", "StLouis") 
+
+S.name <- c("Atlanta", "Charlotte", "DallasFtWorth", "Houston", "Jacksonville", "Louisville", "MiamiFtLauderdale", "Midsouth", "Nashville", "NewOrleansMobile", "Orlando", "PhoenixTucson", "RaleighGreensboro", "RichmondNorfolk", "Roanoke", "SouthCarolina", "SouthCentral", "Southeast", "Tampa")
+
+W.name <- c("Boise", "California", "Denver", "LasVegas", "LosAngeles", "Portland", "Sacramento", "SanDiego", "SanFrancisco", "Seattle", "Spokane", "WestTexNewMexico", "West")
+
+Total.name <- c("TotalUS")
+
+region.list <- list(
+  Northeast=NE.name,
+  Midwest=MW.name,
+  South=S.name,
+  West=W.name,
+  TotalUS=Total.name)
+
+Avocado$USRegion <- lapply(Avocado$region, 
+                 function(x) names(region.list)[grep(x,region.list)])
+
+names(Avocado) <- c("X1", "Date", "AveragePrice", "TotalVolume", "4046", "4225", "4770", "TotalBags", "SmallBags", "LargeBags", "XLargeBags", "type", "year", "region", "Month", "USRegion")
+
+Avocado$USRegion2 <- unlist(Avocado$USRegion)
+```
+```{r}
+library(ggthemes)
+citydata <- Avocado %>% filter(region==c("Chicago", "SanFrancisco", "MiamiFtLauderdale", "NewYork"))
+ggplot(citydata, aes(x=Date, y=AveragePrice, color=type)) + geom_line() + facet_wrap(~region) + theme_economist() + scale_fill_economist() 
+view(Avocado)
+```
+```{r}
+ggplot(citydata, aes(x=Date, y=TotalVolume, color=type)) + geom_line() + facet_wrap(~region) + theme_economist()
+```
+```{r}
+ggplot(Avocado, aes(x=Date, y=LargeBags, color=USRegion2)) + geom_line()
+```
+```{r}
+ggplot(Avocado, aes(x=Date, y=TotalVolume, color=USRegion2)) + geom_line() + theme_economist()
+```
+

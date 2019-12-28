@@ -1,0 +1,55 @@
+---
+title: "Project 2 Draft - Lucie"
+author: "Lucie"
+date: "8/11/2019"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggthemes)
+```
+
+```{r, message=FALSE, echo=FALSE}
+
+gdp_total <- read_csv("gdp_total_yearly_growth.csv")
+
+GDP <- gdp_total %>% filter((country == "France") | (country == "Germany") | (country == "Greece") | (country == "United Kingdom") | (country == "United States")) %>%
+  gather(
+    key = "year",
+    value = "GDP_per_capita",
+    -country) %>%
+  filter(year >= 1990) %>%
+  filter(!is.na(GDP_per_capita))
+
+GDP$year<-as.numeric(GDP$year)
+
+```
+```{r, message=FALSE, echo=FALSE}
+GDP %>%
+  ggplot(aes(x = year, y = GDP_per_capita, color = country)) +
+  geom_line()+
+  scale_x_continuous(breaks=seq(1990,2016,2)) + 
+  xlab("Year") +
+  scale_y_continuous(breaks=seq(-8,5,1)) +
+  ylab("GDP changes in %") + 
+  ggtitle("GDP over time in US and Europe") +
+  geom_text(
+    x = 2001, y = -1, 
+    label = "Financial Crisis 2008",
+    colour = "black"
+    ) + 
+  geom_curve(
+    x = 2004, xend = 2008, y = -1, yend = -4,
+    arrow = arrow(,length = unit(0.4, "cm")), 
+    curvature = -0.4
+    ) +theme_economist() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+This Graph shows the GDP development in Europe and the US from 1990 till 2014 with a particular focus on the effects of financial crisis in 2008. Interesting to see is that Greece was hit hardest by the crisis but has since 2012 managed to recover. Germany on the other hand handeled the financial crisis well but is since 2010 struggeling with a decreasing GDP. The United States were hit by the financial crisis but have managed a relatively stable GDP since then. The United Kingdom almost suffered as much as Greece but has also managed to recover. It can generally be said that the positive GDP changes of the pre financial crisis time have not been achieved since. 
+
+
+

@@ -1,0 +1,222 @@
+---
+title: "A Look Into Wealth Inequality"
+author: "Felix Pham, Barnaby Woods, Lucie"
+date: "8/11/2019"
+output: html_document
+---
+
+Wealth inequality is a rampant force both domestically in the US and across the globe: the most affluent members of society often hold much much more than their fair share of wealth and as a result those who are not as well off suffer. Using datasets from Gapminder, we aim to look at the reasons why wealth inequality exists and connect the economic health of a country to the distribution of wealth. Specifically, examining the GDP per capita of a country can help us to understand the economic state of said country: we will start off by examining the connection between GDP and wealth inequality on a global scale and zoom in to look more specifically at the ways these issues affect the US specifically.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggthemes)
+library(scales)
+GDPpercapita <- read_csv("gdppercapita_us_inflation_adjusted.csv")
+
+gdp_total <- read_csv("gdp_total_yearly_growth.csv")
+
+poorest <- read_csv("income_share_of_poorest_20percent.csv")
+
+second_poorest <- read_csv("income_share_of_2nd_poorest_20percent.csv")
+
+second_richest <- read_csv("income_share_of_2nd_richest_20percent.csv")
+
+middle <- read_csv("income_share_of_middle_20percent.csv")
+
+richest <- read_csv("income_share_of_richest_20percent.csv")
+
+gini <- read_csv("inequality_index_gini.csv")
+```
+
+```{r, message=FALSE, echo = FALSE}
+
+# datasets <- c("poorest", "second_poorest", "second_richest","richest","middle", "gini", "gdp_total")
+
+Barnabyfunction <- function(datasets, value1) #create a custom function
+{
+
+datasets %>% gather( # Convert "wide" to "long"
+    key = "year",
+    value = !!value1, # make this a variable to be used with dyplr!
+    -country
+
+  ) %>% drop_na(!!value1) %>% mutate( 
+    year = as.numeric(year))
+    # change is.na() to drop.na() to be used with dyplr and year to dbl value
+
+}
+
+customfunction <- function(datasets, value1) #create a custom function
+{
+
+datasets <- datasets %>% filter((country == "United States"))
+
+datasets %>% gather( # Convert "wide" to "long"
+    key = "year",
+    value = !!value1, # make this a variable to be used with dyplr!
+    -country
+
+  ) %>% drop_na(!!value1) %>% mutate( 
+    year = as.numeric(year))
+    # change is.na() to drop.na() to be used with dyplr and year to dbl value
+
+}
+
+# lapply(datasets, customfunction) %>%
+# bind_rows()
+
+
+second_poorest <- second_poorest %>% customfunction(value1 = "Income share held by second 20%")
+  
+second_richest <- second_richest %>% customfunction(value1 = "Income share held by fourth 20%")
+
+middle <- middle %>% customfunction(value1 = "Income share held by third 20%")
+
+gini <- gini %>% customfunction(value1 = "gini_index") 
+```
+#### Figure 1: Comparing GDP per capita to wealth distribution 
+``` {r, message=FALSE, echo = FALSE}
+
+poorest1 <- poorest %>% Barnabyfunction(value1 = "poor_20_percent") 
+
+richest1 <- richest %>% Barnabyfunction(value1 = "rich_20_percent")
+
+GDP <- GDPpercapita %>% Barnabyfunction(value1 = "GDP_per_capita")
+
+
+RichAndPoor <-
+   richest1 %>%
+   inner_join(poorest1, by=c("country","year")) %>%
+  mutate(ratio = rich_20_percent / poor_20_percent)
+
+RichAndPoor$year<-as.numeric(RichAndPoor$year)
+
+GDPandwealth <-
+   GDP %>%
+   inner_join(RichAndPoor, by=c("country","year")) %>%
+  filter(year == 2015)
+
+GDPplot <- GDPandwealth %>% 
+  ggplot(aes(x = ratio, y = GDP_per_capita)) +
+  scale_x_continuous(breaks=seq(0,25,5)) +
+  scale_y_continuous(breaks=seq(0,100000,20000), labels = dollar) +
+  geom_point() + 
+  theme_bw() +
+  xlab("Ratio of % wealth of richest 20% to poorest 20%") + 
+  ylab("GDP per capita") + 
+  ggtitle("Comparing GDP per capita to wealth distribution in 2015") +
+  theme(plot.title = element_text(hjust = 0.5)) + theme_economist()
+
+GDPplot
+
+```
+
+In this graph, each point represents an individual country. These data show a seem to convey a subtle trend - the countries with the highest wealth inequality (above 10%) tend to have lower GDP per capita in general than those with lower wealth inequality. On the flipside, countries with higher GDP per capita tend to stay on the lower end of the wealth ratio. Why would this be the case? To use a specific country as an example, Namibia is the point on the graph with the highest ratio; Namibia is home to over 3000 millionaires while the GDP per capita stands below $5000. Given that much of the population is extremely impoverished while there are a select few thousand individuals with a lot of money, it makes sense that the rich own most of the wealth of the country while the GDP is still extremely low as most of the population has very little. On the other end, the country with the highest GDP per capita on the graph is Luxembourg. Luxembourg is an extremely economically productive country with an incredibly high average household income. Because of this, the GDP per capita is high and the wealth inequality is generally on the lower end (although it is not as low as the country with the second highest GDP per capita, Denmark). It seems that in many (although not all) cases, wealth inequality and GDP are inextricably linked as the wealthy in poorer countries hold much of the country's money.
+
+#### Figure 2: GDP over time in US and Europe
+
+``` {r, message=FALSE, echo = FALSE}
+
+GDP2 <- gdp_total %>% filter((country == "France") | (country == "Germany") | (country == "Greece") | (country == "United Kingdom") | (country == "United States")) %>%
+  gather(
+    key = "year",
+    value = "GDP_per_capita",
+    -country) %>%
+  filter(year >= 1990) %>%
+  filter(!is.na(GDP_per_capita))
+
+GDP2$year<-as.numeric(GDP2$year)
+
+GDP2 %>%
+  ggplot(aes(x = year, y = GDP_per_capita, color = country)) +
+  geom_line()+
+  scale_x_continuous(breaks=seq(1990,2016,2)) + 
+  xlab("Year") +
+  scale_y_continuous(breaks=seq(-8,5,1)) +
+  ylab("GDP changes in %") + 
+  ggtitle("GDP over time in US and Europe") +
+  geom_text(
+    x = 2001, y = -1, 
+    label = "Financial Crisis 2008",
+    colour = "black"
+    ) + 
+  geom_curve(
+    x = 2004, xend = 2008, y = -1, yend = -4,
+    arrow = arrow(,length = unit(0.4, "cm")), 
+    curvature = -0.4
+    ) +  theme_economist() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+Now let's compare the GDP development in Europe and the US from 1990 to 2014 with a particular focus on the effects of financial crisis in 2008. It is interesting to see that Greece was hit hardest by the crisis. In fact, it became the center of Europe’s debt crisis after Wall Street imploded in 2008. With global financial markets still reeling, despite Greece's attempt to understand its deficit figures for years, by the spring of 2010, it was veering toward bankruptcy, which threatened to set off a new financial crisis. Since the data seems to "misleadingly" show Greece managed to recover in 2012, actually, the EU loaned Greece enough to continue making payments. The various European authorities and private investors have loaned Greece nearly 320 billion euros. It was the biggest financial rescue of a bankrupt country in history. As of January 2019, Greece has only repaid a fraction of its debts and its scheduled debt payments are expected to go beyond 2060. 
+
+Germany, on the other hand, handled the financial crisis well but it has been struggling with a decreasing GDP ever since 2009. The United States also got hit by the financial crisis but managed to retain a relatively stable GDP since then even though it took many years for its economy to recover to pre-crisis levels of employment and output. The United Kingdom almost suffered as much as Greece but has also seemed to manage to recover somewhat. 
+
+In short, It can generally be said that this financial crisis in 2008 really left a lasting "scar" in the GDP changes of both the EU and the U.S. The prime time and numbers during the pre-financial crisis has never been achieved since. 
+
+#### Figure 3: Income shares by quintile in the United States
+```{r fig1, fig.height = 10, fig.width = 18, message=FALSE, echo = FALSE}
+
+poorest <- poorest %>% customfunction(value1 = "Income share held by lowest 20%") 
+
+richest <- richest %>% customfunction(value1 = "Income share held by highest 20%")
+
+joined_via_inner <-
+   richest %>%
+  inner_join(poorest, by=c("country","year")) %>%
+  inner_join(second_poorest, by=c("country","year")) %>%
+  inner_join(second_richest, by=c("country","year")) %>%
+  inner_join(middle, by=c("country","year")) %>%
+  filter(year >= 1979) %>%
+  gather(
+    key = "Type",
+    value = "Percentage(%)",
+    -country,
+    -year
+) %>% mutate(Type = factor(Type, levels
+                 =c("Income share held by highest 20%","Income share held by fourth 20%","Income share held by third 20%", "Income share held by second 20%", "Income share held by lowest 20%")) # rearrange Type variable from highest to lowest
+)
+
+joined_via_inner %>%
+  ggplot(aes(x=year, y=`Percentage(%)`, fill=Type)) +
+  geom_area(colour="black", size=.2, alpha=.8) +
+  # geom_point(size = 0.5)+
+
+  # facet_wrap(~country, ncol = 10) +
+  scale_x_continuous(breaks=seq(1979,2016,6)) +
+    scale_y_continuous(breaks=seq(0,100,20), labels = function(x) paste0(x, "%")) + # Add percent sign
+  scale_fill_manual(
+    values = c("green4","seagreen1", "yellow", "brown3", "blue")) +
+  theme_economist()+
+  ggtitle("Income shares by quintile in the United States") +
+  theme(plot.title = element_text(size = 50, face = "bold")) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+This chart shows, in the U.S, the evolution of shares of total income going stunningly higher to the richest 20% (and subsequent quintiles). 
+
+From the chart, we can see that in the US, income inequality has been on the rise in the last four decades, with incomes for the bottom 20% growing much slower than incomes for the top 20%. This is different to the experience of other [OECD](https://usoecd.usmission.gov/our-relationship/about-the-oecd/what-is-the-oecd/) countries. The US is an exception when it comes to income inequality.
+
+Research shows that in the US the ‘ultra-rich’ are the group that has experienced the largest income growth in the recent period of growing income inequality. This is shown in the above chart. Each regions along the horizontal axis represents a different percentile in the income distribution, with the height marking the corresponding average level of income share in the period 1980-2014 (after adjusting for inflation). The color of distribution of income is also indicated in the above figure.
+
+As we can see, the poorest individuals in the US have seen no real income growth in the period 1980-2014; while at the very top, the ultra-rich have enjoyed their average annual growth. Without taxes and transfers, those at the bottom have actually seen their incomes shrinking.
+
+Another striking fact is that the relationship is monotonically increasing: independently of where you are in the US income distribution, those who are richer have seen larger income growth. 
+
+Personally, my interpretation from this graph is that the key driver for the rising U.S. income inequality is the CEO pay. The number of corporate executives is already about two-thirds of America’s richest 1 percent of households. The CEO pay explosion contrasts sharply with trends at the bottom end of the U.S. wage scale. Congress has not passed a raise in the minimum wage for more than a decade. Also, in order to meet basic needs, low-wage workers probably have to spend nearly every dollar they earn, creating beneficial economic ripple effects. The wealthy, by contrast, can afford to squirrel away more of their earnings.
+
+
+## Discussion
+
+In spite of the finding that GDP and wealth inequality are, in some cases, linked, figures 2 and 3 tell an interesting story - the financial crash in 2008 did almost nothing to affect the way wealth distribution in the US looks. Why is this the case? To figure out the answer, much more intensive research would be needed. For now, we can see that wealth inequality exists pretty much everywhere - figure 1 shows that most countries still have a ratio of rich to poor over 5 and in the case of the US we can see exactly how unevenly wealth is distributed and how much money the wealthy earn compared to the other 80%.
+
+## Methodology
+
+To make all the graphs seem unify, easiest to perceive, and professional, the econimist theme was chosen. It keeps the consistency over the figures. To achieve each graph, we opted for the gather function during our data wrangling for the most part to create the variable "year". This helps us establish a timeline series for readers to easier connect the trends.
+
+The structure of this article is also being intentionally used as a guideline for readers to this subject by introducing the subject from a global scale to the U.S vs E.U countries, and then specifically focus on the U.S. The curve in graph 2 is to redirect reader's attention towards 2008 as it is the year of the financial crisis, which heavily impacted the GDP of all countries observed, as we can see. The choice of a stacked bar graph in graph 3 is to demonstrate the whole society in the clearest manner. Together with the distinction of vibrant colors, we think it did a great job at showing the huge difference, or unbalance in the wealth distribution nowadays.
+
+ 
+
